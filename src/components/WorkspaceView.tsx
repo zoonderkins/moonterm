@@ -1,0 +1,201 @@
+import { useEffect, useCallback, useState, useRef } from 'react'
+import type { Workspace, TerminalInstance, SplitDirection, FocusedPane } from '../types'
+import { workspaceStore } from '../stores/workspace-store'
+import { TerminalPanel } from './TerminalPanel'
+import { TabBar } from './TabBar'
+import { tauriAPI } from '../lib/tauri-bridge'
+
+interface WorkspaceViewProps {
+  workspace: Workspace
+  terminals: TerminalInstance[]
+  focusedTerminalId: string | null
+  splitTerminalId: string | null
+  splitDirection: SplitDirection | null
+  focusedPane: FocusedPane
+  showShortcutHints?: boolean
+}
+
+export function WorkspaceView({
+  workspace,
+  terminals,
+  focusedTerminalId,
+  splitTerminalId: _splitTerminalId,  // Used to trigger re-render when split changes
+  splitDirection,
+  focusedPane,
+  showShortcutHints = false
+}: WorkspaceViewProps) {
+  const focusedTerminal = terminals.find(t => t.id === focusedTerminalId)
+  const splitTerminal = workspaceStore.getSplitTerminal()
+  void _splitTerminalId  // Acknowledge the prop is intentionally used for reactivity
+
+  // Persist split ratio to localStorage
+  const [splitRatio, setSplitRatio] = useState(() => {
+    const saved = localStorage.getItem('split-ratio')
+    return saved ? parseFloat(saved) : 0.5
+  })
+  const [isResizing, setIsResizing] = useState(false)
+  const isVertical = splitDirection === 'vertical'
+
+  // Save split ratio when it changes
+  useEffect(() => {
+    localStorage.setItem('split-ratio', splitRatio.toString())
+  }, [splitRatio])
+
+  // Track if we've ever had terminals (to avoid auto-creating after user closes all)
+  const hadTerminalsRef = useRef(terminals.length > 0)
+
+  // Update ref when terminals change
+  useEffect(() => {
+    if (terminals.length > 0) {
+      hadTerminalsRef.current = true
+    }
+  }, [terminals.length])
+
+  // Auto-create first terminal only for new workspaces that never had terminals
+  useEffect(() => {
+    if (terminals.length === 0 && !hadTerminalsRef.current) {
+      const terminal = workspaceStore.addTerminal(workspace.id)
+      tauriAPI.pty.create({
+        id: terminal.id,
+        cwd: workspace.folderPath
+      })
+    }
+  }, [workspace.id, terminals.length, workspace.folderPath])
+
+  // Set default focus to first terminal
+  useEffect(() => {
+    if (!focusedTerminalId && terminals.length > 0) {
+      workspaceStore.setFocusedTerminal(terminals[0].id)
+    }
+  }, [focusedTerminalId, terminals])
+
+  const handleAddTerminal = useCallback(() => {
+    const terminal = workspaceStore.addTerminal(workspace.id)
+    tauriAPI.pty.create({
+      id: terminal.id,
+      cwd: workspace.folderPath
+    })
+  }, [workspace.id, workspace.folderPath])
+
+  const handleCloseTerminal = useCallback((id: string) => {
+    // If closing the main terminal that has a split, also close the split
+    if (splitTerminal?.splitFromId === id) {
+      workspaceStore.closeSplit()
+    }
+    tauriAPI.pty.kill(id)
+    workspaceStore.removeTerminal(id)
+  }, [splitTerminal])
+
+  const handleFocus = useCallback((id: string) => {
+    workspaceStore.setFocusedTerminal(id)
+  }, [])
+
+  const mainTerminal = focusedTerminal || terminals[0]
+  const isSplit = splitTerminal && splitTerminal.splitFromId === mainTerminal?.id
+
+  // Handle split resize
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = document.querySelector('.terminals-container')
+      if (!container) return
+
+      const rect = container.getBoundingClientRect()
+      // Calculate ratio based on split direction
+      const ratio = isVertical
+        ? (e.clientX - rect.left) / rect.width
+        : (e.clientY - rect.top) / rect.height
+      setSplitRatio(Math.max(0.2, Math.min(0.8, ratio)))
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, isVertical])
+
+  return (
+    <div className="workspace-view">
+      {/* Tab Bar at top - browser style */}
+      <TabBar
+        terminals={terminals}
+        focusedTerminalId={focusedTerminalId}
+        onFocus={handleFocus}
+        onClose={handleCloseTerminal}
+        onAddTerminal={handleAddTerminal}
+        showShortcutHints={showShortcutHints}
+      />
+
+      {/* Terminal content area */}
+      {terminals.length === 0 ? (
+        <div className="terminals-empty-state">
+          <p>No terminals open</p>
+          <button onClick={handleAddTerminal} className="add-terminal-btn-large">
+            + New Terminal
+          </button>
+          <p className="hint">or press Cmd+T</p>
+        </div>
+      ) : (
+        <div className={`terminals-container ${isSplit ? (isVertical ? 'split-vertical' : 'split-horizontal') : ''}`}>
+          {/* Main pane - all terminals rendered, only focused visible */}
+          <div
+            className={`terminal-pane main-pane ${focusedPane === 'main' ? 'pane-focused' : ''}`}
+            style={isSplit
+              ? (isVertical ? { width: `${splitRatio * 100}%` } : { height: `${splitRatio * 100}%` })
+              : undefined
+            }
+            onClick={() => workspaceStore.setFocusedPane('main')}
+          >
+            {terminals.map((terminal) => (
+              <div
+                key={terminal.id}
+                className={`terminal-wrapper ${terminal.id === mainTerminal?.id ? 'active' : 'hidden'}`}
+              >
+                <TerminalPanel
+                  terminalId={terminal.id}
+                  isActive={terminal.id === mainTerminal?.id && focusedPane === 'main'}
+                />
+              </div>
+            ))}
+          </div>
+
+          {isSplit && splitTerminal && (
+            <>
+              <div
+                className={`split-divider ${isVertical ? 'vertical' : 'horizontal'} ${isResizing ? 'resizing' : ''}`}
+                onMouseDown={handleResizeStart}
+              >
+                <div className="split-divider-handle" />
+              </div>
+              <div
+                className={`terminal-pane split-pane ${focusedPane === 'split' ? 'pane-focused' : ''}`}
+                style={isVertical
+                  ? { width: `${(1 - splitRatio) * 100}%` }
+                  : { height: `${(1 - splitRatio) * 100}%` }
+                }
+                onClick={() => workspaceStore.setFocusedPane('split')}
+              >
+                <TerminalPanel
+                  terminalId={splitTerminal.id}
+                  isActive={focusedPane === 'split'}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
