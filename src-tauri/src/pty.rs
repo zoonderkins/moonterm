@@ -446,20 +446,55 @@ impl PtyManager {
         Ok(())
     }
 
-    /// Write data to PTY
+    /// Large paste chunking threshold (bytes)
+    /// Pastes larger than this will be split into chunks to prevent terminal overwhelm
+    const CHUNK_SIZE: usize = 2048;
+    /// Delay between chunks (microseconds) - 10ms
+    const CHUNK_DELAY_US: u64 = 10_000;
+
+    /// Write data to PTY with automatic chunking for large pastes
+    ///
+    /// Differentiated from Tony's JS approach:
+    /// - Chunking happens in Rust, avoiding multiple IPC round-trips
+    /// - Native thread sleep for precise timing
+    /// - Single IPC call from frontend, chunking is transparent
     pub fn write(&self, id: String, data: String) -> Result<(), String> {
         let instances = self.instances.lock();
         let instance = instances
             .get(&id)
             .ok_or_else(|| "PTY instance not found".to_string())?;
 
+        let bytes = data.as_bytes();
         let mut writer_lock = instance.writer.lock();
-        writer_lock
-            .write_all(data.as_bytes())
-            .map_err(|e| format!("Failed to write: {}", e))?;
-        writer_lock
-            .flush()
-            .map_err(|e| format!("Failed to flush: {}", e))?;
+
+        // If data is small, write directly
+        if bytes.len() <= Self::CHUNK_SIZE {
+            writer_lock
+                .write_all(bytes)
+                .map_err(|e| format!("Failed to write: {}", e))?;
+            writer_lock
+                .flush()
+                .map_err(|e| format!("Failed to flush: {}", e))?;
+            return Ok(());
+        }
+
+        // Large paste: chunk it to prevent terminal overwhelm
+        // This is especially important for TUI apps like vim, Claude Code
+        for chunk in bytes.chunks(Self::CHUNK_SIZE) {
+            writer_lock
+                .write_all(chunk)
+                .map_err(|e| format!("Failed to write chunk: {}", e))?;
+            writer_lock
+                .flush()
+                .map_err(|e| format!("Failed to flush chunk: {}", e))?;
+
+            // Small delay between chunks to let terminal process
+            // Using sleep here is acceptable since we're in a locked context
+            // and this only happens for large pastes (rare event)
+            if chunk.len() == Self::CHUNK_SIZE {
+                std::thread::sleep(std::time::Duration::from_micros(Self::CHUNK_DELAY_US));
+            }
+        }
 
         Ok(())
     }

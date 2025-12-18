@@ -13,6 +13,7 @@ interface WorkspaceViewProps {
   splitDirection: SplitDirection | null
   focusedPane: FocusedPane
   showShortcutHints?: boolean
+  onUnlockRequest?: (workspaceId: string) => void
 }
 
 export function WorkspaceView({
@@ -22,7 +23,8 @@ export function WorkspaceView({
   splitTerminalId: _splitTerminalId,  // Used to trigger re-render when split changes
   splitDirection,
   focusedPane,
-  showShortcutHints = false
+  showShortcutHints = false,
+  onUnlockRequest
 }: WorkspaceViewProps) {
   const focusedTerminal = terminals.find(t => t.id === focusedTerminalId)
   const splitTerminal = workspaceStore.getSplitTerminal()
@@ -52,12 +54,13 @@ export function WorkspaceView({
   }, [terminals.length])
 
   // Auto-create first terminal only for new workspaces that never had terminals
+  // Skip for locked workspaces (terminals will be restored on unlock)
   useEffect(() => {
-    if (terminals.length === 0 && !hadTerminalsRef.current) {
+    if (terminals.length === 0 && !hadTerminalsRef.current && !workspace.isLocked) {
       // Just add terminal to store, PTY will be created by TerminalPanel
       workspaceStore.addTerminal(workspace.id)
     }
-  }, [workspace.id, terminals.length, workspace.folderPath])
+  }, [workspace.id, terminals.length, workspace.folderPath, workspace.isLocked])
 
   // Set default focus to first terminal
   useEffect(() => {
@@ -122,18 +125,31 @@ export function WorkspaceView({
 
   return (
     <div className="workspace-view">
+      {/* Locked workspace overlay */}
+      {workspace.isLocked && (
+        <div className="workspace-locked-overlay">
+          <span className="lock-icon-large">🔒</span>
+          <p>This workspace is locked</p>
+          <button onClick={() => onUnlockRequest?.(workspace.id)}>
+            Unlock Workspace
+          </button>
+        </div>
+      )}
+
       {/* Tab Bar at top - browser style */}
-      <TabBar
-        terminals={terminals}
-        focusedTerminalId={focusedTerminalId}
-        onFocus={handleFocus}
-        onClose={handleCloseTerminal}
-        onAddTerminal={handleAddTerminal}
-        showShortcutHints={showShortcutHints}
-      />
+      {!workspace.isLocked && (
+        <TabBar
+          terminals={terminals}
+          focusedTerminalId={focusedTerminalId}
+          onFocus={handleFocus}
+          onClose={handleCloseTerminal}
+          onAddTerminal={handleAddTerminal}
+          showShortcutHints={showShortcutHints}
+        />
+      )}
 
       {/* Terminal content area */}
-      {terminals.length === 0 ? (
+      {!workspace.isLocked && (terminals.length === 0 ? (
         <div className="terminals-empty-state">
           <p>No terminals open</p>
           <button onClick={handleAddTerminal} className="add-terminal-btn-large">
@@ -192,7 +208,7 @@ export function WorkspaceView({
             </>
           )}
         </div>
-      )}
+      ))}
     </div>
   )
 }

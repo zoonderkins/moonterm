@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Tauri](https://img.shields.io/badge/tauri-2.x-FFC131.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -16,6 +16,8 @@
 ## Features
 
 - **Multi-Workspace Support** - Organize terminals by project folders
+- **Workspace Roles** - Color-coded project tags (Frontend, Backend, DevOps, etc.)
+- **Activity Indicators** - Visual feedback showing active/idle terminals with breathing animation
 - **Browser-Style Tabs** - Terminal tabs at top with hover preview
 - **Terminal Split** - Split terminals horizontally (Cmd+D) or vertically (Cmd+Shift+D)
 - **Split Pane Focus** - Click to switch focus between split panes (blue border indicates active)
@@ -333,6 +335,15 @@ For applications using TUI frameworks (like **Claude Code CLI** which uses [Ink]
 - **smoothScrollDuration: 0** for instant updates during rapid redraws
 
 These optimizations help reduce visual glitches like extra blank lines during fast terminal updates.
+
+### Large Paste Chunking
+
+When pasting text larger than 2KB, Moonterm automatically chunks the data:
+
+- **Rust-native chunking** - Handled in the PTY backend, not JavaScript
+- **2KB chunks** with 10ms delays between them
+- **Prevents terminal overwhelm** - Especially important for TUI apps like vim, nano
+- **Transparent to users** - Single paste command, chunking is automatic
 
 ---
 

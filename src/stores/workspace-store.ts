@@ -4,6 +4,9 @@ import { tauriAPI } from '../lib/tauri-bridge'
 import { getAllTerminalContents } from '../lib/terminal-registry'
 import { STORAGE_SCHEMA } from '../lib/version'
 
+// Activity threshold: terminal is "active" if last activity was within this time
+export const ACTIVITY_THRESHOLD_MS = 10_000 // 10 seconds
+
 // Saved terminal data with scrollback content
 interface SavedTerminal {
   id: string
@@ -28,6 +31,10 @@ class WorkspaceStore {
   }
 
   private listeners: Set<Listener> = new Set()
+
+  // Session-only password cache (cleared on app restart, never persisted)
+  // Maps workspaceId -> password for quick re-lock
+  private sessionPasswords: Map<string, string> = new Map()
 
   getState(): AppState {
     return this.state
@@ -86,6 +93,145 @@ class WorkspaceStore {
     }
 
     this.notify()
+  }
+
+  setWorkspaceRole(id: string, roleId: string | undefined): void {
+    this.state = {
+      ...this.state,
+      workspaces: this.state.workspaces.map(w =>
+        w.id === id ? { ...w, roleId } : w
+      )
+    }
+
+    this.notify()
+  }
+
+  // Lock a workspace with encrypted data
+  // Also removes terminals for this workspace (they're now encrypted)
+  lockWorkspace(id: string, encryptedData: string, hint?: string): void {
+    // Kill PTY processes for terminals in this workspace
+    const terminalsToRemove = this.state.terminals.filter(t => t.workspaceId === id)
+    terminalsToRemove.forEach(t => {
+      tauriAPI.pty.kill(t.id)
+    })
+
+    this.state = {
+      ...this.state,
+      workspaces: this.state.workspaces.map(w =>
+        w.id === id ? { ...w, isLocked: true, encryptedData, passwordHint: hint } : w
+      ),
+      // Remove terminals for this workspace
+      terminals: this.state.terminals.filter(t => t.workspaceId !== id),
+      // Clear focus if focused terminal was in this workspace
+      focusedTerminalId: terminalsToRemove.some(t => t.id === this.state.focusedTerminalId)
+        ? null
+        : this.state.focusedTerminalId
+    }
+
+    this.notify()
+  }
+
+  // Unlock a workspace and restore terminals from decrypted data
+  unlockWorkspace(id: string, restoredData?: {
+    terminals: Array<{
+      id: string
+      title: string
+      cwd: string
+      splitFromId?: string
+      scrollbackContent?: string
+    }>
+    splitTerminalId?: string | null
+    splitDirection?: SplitDirection | null
+  }): void {
+    if (!restoredData?.terminals) {
+      // No terminals to restore
+      this.state = {
+        ...this.state,
+        workspaces: this.state.workspaces.map(w =>
+          w.id === id ? { ...w, isLocked: false, encryptedData: undefined, passwordHint: undefined } : w
+        )
+      }
+      this.notify()
+      return
+    }
+
+    // Generate NEW IDs and create a mapping from old -> new
+    const idMapping = new Map<string, string>()
+    restoredData.terminals.forEach(t => {
+      idMapping.set(t.id, uuidv4())
+    })
+
+    // Create terminals with new IDs, updating splitFromId references
+    const newTerminals: TerminalInstance[] = restoredData.terminals.map(t => ({
+      id: idMapping.get(t.id)!,
+      workspaceId: id,
+      title: t.title,
+      cwd: t.cwd,
+      scrollbackBuffer: [],
+      savedScrollbackContent: t.scrollbackContent,
+      // Map splitFromId to new ID
+      splitFromId: t.splitFromId ? idMapping.get(t.splitFromId) : undefined
+    }))
+
+    // Find the new split terminal ID (if there was a split)
+    const newSplitTerminalId = restoredData.splitTerminalId
+      ? idMapping.get(restoredData.splitTerminalId) || null
+      : null
+
+    // Find main (non-split) terminals for focus
+    const mainTerminals = newTerminals.filter(t => !t.splitFromId)
+
+    this.state = {
+      ...this.state,
+      workspaces: this.state.workspaces.map(w =>
+        w.id === id ? { ...w, isLocked: false, encryptedData: undefined, passwordHint: undefined } : w
+      ),
+      // Add restored terminals
+      terminals: [...this.state.terminals, ...newTerminals],
+      // Focus first main terminal
+      focusedTerminalId: mainTerminals.length > 0 ? mainTerminals[0].id : this.state.focusedTerminalId,
+      // Restore split state
+      splitTerminalId: newSplitTerminalId,
+      splitDirection: newSplitTerminalId ? restoredData.splitDirection || null : null,
+      focusedPane: 'main'
+    }
+
+    this.notify()
+  }
+
+  // Check if workspace is locked
+  isWorkspaceLocked(id: string): boolean {
+    const workspace = this.state.workspaces.find(w => w.id === id)
+    return workspace?.isLocked ?? false
+  }
+
+  // Get encrypted data for a workspace
+  getWorkspaceEncryptedData(id: string): string | undefined {
+    const workspace = this.state.workspaces.find(w => w.id === id)
+    return workspace?.encryptedData
+  }
+
+  // Get password hint for a workspace
+  getWorkspacePasswordHint(id: string): string | undefined {
+    const workspace = this.state.workspaces.find(w => w.id === id)
+    return workspace?.passwordHint
+  }
+
+  // Session password management (in-memory only, cleared on restart)
+  setSessionPassword(id: string, password: string): void {
+    this.sessionPasswords.set(id, password)
+  }
+
+  getSessionPassword(id: string): string | undefined {
+    return this.sessionPasswords.get(id)
+  }
+
+  clearSessionPassword(id: string): void {
+    this.sessionPasswords.delete(id)
+  }
+
+  hasSessionPassword(id: string): boolean {
+    return this.sessionPasswords.has(id)
   }
 
   resetAll(): void {
@@ -229,6 +375,41 @@ class WorkspaceStore {
     // Don't notify for scrollback updates to avoid re-renders
   }
 
+  // Update terminal activity timestamp - called on PTY output
+  // This is throttled to avoid excessive state updates
+  private lastActivityUpdate: Map<string, number> = new Map()
+
+  updateTerminalActivity(id: string): void {
+    const now = Date.now()
+    const lastUpdate = this.lastActivityUpdate.get(id) || 0
+
+    // Throttle: only update if 500ms has passed since last update
+    if (now - lastUpdate < 500) return
+
+    this.lastActivityUpdate.set(id, now)
+    this.state = {
+      ...this.state,
+      terminals: this.state.terminals.map(t =>
+        t.id === id ? { ...t, lastActivityTime: now } : t
+      )
+    }
+
+    this.notify()
+  }
+
+  // Check if a terminal is currently active (had output within threshold)
+  isTerminalActive(id: string): boolean {
+    const terminal = this.state.terminals.find(t => t.id === id)
+    if (!terminal?.lastActivityTime) return false
+    return Date.now() - terminal.lastActivityTime < ACTIVITY_THRESHOLD_MS
+  }
+
+  // Get workspace activity status (any terminal active)
+  isWorkspaceActive(workspaceId: string): boolean {
+    const terminals = this.state.terminals.filter(t => t.workspaceId === workspaceId)
+    return terminals.some(t => this.isTerminalActive(t.id))
+  }
+
   clearScrollback(id: string): void {
     this.state = {
       ...this.state,
@@ -243,6 +424,11 @@ class WorkspaceStore {
   // Get terminals for current workspace (excluding split panes)
   getWorkspaceTerminals(workspaceId: string): TerminalInstance[] {
     return this.state.terminals.filter(t => t.workspaceId === workspaceId && !t.splitFromId)
+  }
+
+  // Get ALL terminals for workspace including splits (for encryption)
+  getAllWorkspaceTerminals(workspaceId: string): TerminalInstance[] {
+    return this.state.terminals.filter(t => t.workspaceId === workspaceId)
   }
 
   // Split actions

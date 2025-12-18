@@ -1,4 +1,5 @@
 import { tauriAPI } from './tauri-bridge'
+import { workspaceStore } from '../stores/workspace-store'
 
 type OutputHandler = (data: string) => void
 type ExitHandler = (exitCode: number) => void
@@ -13,6 +14,9 @@ export async function initPtyListeners() {
   initialized = true
 
   await tauriAPI.pty.onOutput((id, data) => {
+    // Track activity for all terminals globally (throttled in store)
+    workspaceStore.updateTerminalActivity(id)
+
     const handler = outputHandlers.get(id)
     if (handler) handler(data)
   })

@@ -1,6 +1,6 @@
 [package]
 name = "moonterm"
-version = "1.0.4"
+version = "1.0.6"
 description = "A terminal aggregator with multi-workspace support"
 authors = ["zoonderkins"]
 edition = "2021"
@@ -23,6 +23,12 @@ uuid = { version = "1", features = ["v4", "serde"] }
 parking_lot = "0.12"
 flate2 = "1.0"
 chrono = "0.4"
+
+# Encryption (password-only, cross-platform)
+aes-gcm = "0.10"
+argon2 = "0.5"
+rand = "0.8"
+base64 = "0.22"
 
 [profile.dev]
 incremental = true

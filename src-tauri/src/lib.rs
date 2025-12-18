@@ -1,4 +1,5 @@
 mod commands;
+mod crypto;
 mod pty;
 mod workspace;
 
@@ -23,16 +24,23 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // PTY commands
             commands::pty_create,
             commands::pty_write,
             commands::pty_resize,
             commands::pty_kill,
             commands::pty_restart,
             commands::pty_get_cwd,
+            // Dialog commands
             commands::dialog_select_folder,
+            // Workspace commands
             commands::workspace_save,
             commands::workspace_load,
             commands::get_config_path,
+            // Crypto commands (password-only)
+            commands::crypto_encrypt,
+            commands::crypto_decrypt,
+            commands::crypto_get_hint,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

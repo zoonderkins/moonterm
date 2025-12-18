@@ -1,7 +1,7 @@
 // App and storage schema versions
 // Increment STORAGE_SCHEMA_VERSION when the saved data structure changes
 
-export const APP_VERSION = '1.0.4'
+export const APP_VERSION = '1.0.5'
 
 // Storage schema versions
 export const STORAGE_SCHEMA = {

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Workspace } from '../types'
 import { workspaceStore } from '../stores/workspace-store'
+import { ActivityIndicator } from './ActivityIndicator'
+import { RoleBadge } from './RoleBadge'
 
 interface SidebarProps {
   workspaces: Workspace[]
@@ -9,6 +11,8 @@ interface SidebarProps {
   onAddWorkspace: () => void
   onRemoveWorkspace: (id: string) => void
   onSettingsClick: () => void
+  onLockWorkspace: (id: string) => void
+  onUnlockWorkspace: (id: string) => void
   showShortcutHints?: boolean
 }
 
@@ -19,6 +23,8 @@ export function Sidebar({
   onAddWorkspace,
   onRemoveWorkspace,
   onSettingsClick,
+  onLockWorkspace,
+  onUnlockWorkspace,
   showShortcutHints = false
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -100,37 +106,60 @@ export function Sidebar({
             title={isCollapsed ? workspace.name : undefined}
           >
             {isCollapsed ? (
-              // Collapsed: show only number
-              <span className="workspace-number">{index + 1}</span>
+              // Collapsed: show number + activity indicator
+              <>
+                <span className="workspace-number">{index + 1}</span>
+                <ActivityIndicator workspaceId={workspace.id} />
+              </>
             ) : (
-              // Expanded: show full content
+              // Expanded: show full content with role badge and activity
               <>
                 {showShortcutHints && index < 9 && (
                   <span className="shortcut-hint">{index + 1}</span>
                 )}
-                {editingId === workspace.id ? (
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    className="rename-input workspace-rename"
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onBlur={handleRename}
-                    onKeyDown={handleKeyDown}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                ) : (
-                  <span className="workspace-name">{workspace.name}</span>
-                )}
-                <button
-                  className="remove-btn"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onRemoveWorkspace(workspace.id)
-                  }}
-                >
-                  ×
-                </button>
+                <div className="workspace-item-content">
+                  <ActivityIndicator workspaceId={workspace.id} />
+                  {editingId === workspace.id ? (
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      className="rename-input workspace-rename"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={handleRename}
+                      onKeyDown={handleKeyDown}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <span className="workspace-name">{workspace.name}</span>
+                  )}
+                </div>
+                <div className="workspace-meta">
+                  <RoleBadge workspaceId={workspace.id} roleId={workspace.roleId} />
+                  <span
+                    className={`lock-icon ${workspace.isLocked ? 'locked' : 'unlocked'}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (workspace.isLocked) {
+                        onUnlockWorkspace(workspace.id)
+                      } else {
+                        onLockWorkspace(workspace.id)
+                      }
+                    }}
+                    title={workspace.isLocked ? 'Unlock workspace' : 'Lock workspace'}
+                  >
+                    {workspace.isLocked ? '🔒' : '🔓'}
+                  </span>
+                  <button
+                    className="remove-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRemoveWorkspace(workspace.id)
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               </>
             )}
           </div>

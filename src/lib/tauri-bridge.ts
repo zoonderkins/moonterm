@@ -21,6 +21,11 @@ export interface TauriAPI {
   dialog: {
     selectFolder: () => Promise<string | null>
   }
+  crypto: {
+    encrypt: (plaintext: string, password: string, hint?: string) => Promise<string>
+    decrypt: (encryptedData: string, password: string) => Promise<string>
+    getHint: (encryptedData: string) => Promise<string | null>
+  }
 }
 
 export const tauriAPI: TauriAPI = {
@@ -72,6 +77,17 @@ export const tauriAPI: TauriAPI = {
   dialog: {
     selectFolder: () =>
       invoke<string | null>('dialog_select_folder'),
+  },
+
+  crypto: {
+    encrypt: (plaintext: string, password: string, hint?: string) =>
+      invoke<string>('crypto_encrypt', { plaintext, password, hint }),
+
+    decrypt: (encryptedData: string, password: string) =>
+      invoke<string>('crypto_decrypt', { encryptedData, password }),
+
+    getHint: (encryptedData: string) =>
+      invoke<string | null>('crypto_get_hint', { encryptedData }),
   },
 }
 

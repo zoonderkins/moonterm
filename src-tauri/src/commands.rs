@@ -1,3 +1,4 @@
+use crate::crypto;
 use crate::pty::{CreatePtyOptions, PtyManager};
 use crate::workspace;
 use std::sync::Arc;
@@ -87,4 +88,33 @@ pub async fn workspace_load(app_handle: tauri::AppHandle) -> Result<Option<Strin
 #[tauri::command]
 pub async fn get_config_path(app_handle: tauri::AppHandle) -> Result<String, String> {
     workspace::get_config_path(&app_handle).map(|p| p.to_string_lossy().to_string())
+}
+
+// ============================================================================
+// Encryption Commands
+// ============================================================================
+
+/// Encrypt data with password
+#[tauri::command]
+pub async fn crypto_encrypt(
+    plaintext: String,
+    password: String,
+    hint: Option<String>,
+) -> Result<String, String> {
+    let envelope = crypto::encrypt(&plaintext, &password, hint)?;
+    crypto::envelope_to_string(&envelope)
+}
+
+/// Decrypt data with password
+#[tauri::command]
+pub async fn crypto_decrypt(encrypted_data: String, password: String) -> Result<String, String> {
+    let envelope = crypto::string_to_envelope(&encrypted_data)?;
+    crypto::decrypt(&envelope, &password)
+}
+
+/// Get password hint from encrypted data
+#[tauri::command]
+pub async fn crypto_get_hint(encrypted_data: String) -> Result<Option<String>, String> {
+    let envelope = crypto::string_to_envelope(&encrypted_data)?;
+    Ok(envelope.hint)
 }

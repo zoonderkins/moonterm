@@ -1291,3 +1291,313 @@ body {
 .error-btn.reload:hover {
   background: var(--bg-hover);
 }
+
+/* ========================================
+   Activity Indicator - Breathing Animation
+   ======================================== */
+.activity-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background-color 0.3s ease;
+}
+
+.activity-indicator.active {
+  background-color: #fbbf24;
+  animation: breathing-active 2s ease-in-out infinite;
+}
+
+.activity-indicator.idle {
+  background-color: #22c55e;
+  animation: breathing-idle 3s ease-in-out infinite;
+}
+
+@keyframes breathing-active {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes breathing-idle {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+}
+
+/* ========================================
+   Workspace Role Badge
+   ======================================== */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+}
+
+.role-badge:hover {
+  filter: brightness(1.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.role-badge .role-icon {
+  font-size: 11px;
+}
+
+.role-badge .role-name {
+  max-width: 50px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Role selector dropdown */
+.role-selector {
+  position: absolute;
+  top: 100%;
+  left: auto;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 140px;
+  max-width: 180px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.role-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.role-option:hover {
+  background: var(--bg-hover);
+}
+
+.role-option.selected {
+  background: var(--accent-color);
+  color: white;
+}
+
+.role-option .role-icon {
+  font-size: 14px;
+}
+
+.role-option-clear {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Workspace item with role and activity */
+.workspace-item-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.workspace-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ========================================
+   Password Dialog
+   ======================================== */
+.password-dialog {
+  min-width: 360px;
+  max-width: 420px;
+}
+
+.password-dialog h3 {
+  margin-bottom: 8px;
+}
+
+.password-dialog .workspace-name-label {
+  color: var(--accent-color);
+  font-weight: 500;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+.password-dialog .form-group {
+  margin-bottom: 16px;
+}
+
+.password-dialog .form-group label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.password-dialog .form-group input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.password-dialog .form-group input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.password-input-wrapper input {
+  flex: 1;
+  padding-right: 40px !important;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.6;
+  padding: 4px;
+}
+
+.toggle-password:hover {
+  opacity: 1;
+}
+
+.password-hint {
+  padding: 8px 12px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 4px;
+  color: #fbbf24;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+
+.password-dialog .error-message {
+  padding: 8px 12px;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  border-radius: 4px;
+  color: #f44336;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+
+.password-dialog .warning-text {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.dialog-btn.danger {
+  background: var(--danger-color);
+  color: white;
+}
+
+.dialog-btn.danger:hover {
+  filter: brightness(1.1);
+}
+
+/* Lock icon in workspace item */
+.lock-icon {
+  font-size: 12px;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.lock-icon:hover {
+  opacity: 1;
+  background: var(--bg-hover);
+}
+
+.lock-icon.locked {
+  color: #fbbf24;
+}
+
+.lock-icon.unlocked {
+  color: var(--text-secondary);
+}
+
+/* Locked workspace overlay */
+.workspace-locked-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  z-index: 10;
+}
+
+.workspace-locked-overlay .lock-icon-large {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.workspace-locked-overlay p {
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.workspace-locked-overlay button {
+  padding: 10px 24px;
+  background: var(--accent-color);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.workspace-locked-overlay button:hover {
+  filter: brightness(1.1);
+}

@@ -5,9 +5,11 @@ import { Sidebar } from './components/Sidebar'
 import { WorkspaceView } from './components/WorkspaceView'
 import { SettingsDialog, applyTheme, getSavedTheme, type ThemeKey } from './components/SettingsDialog'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
+import { PasswordDialog } from './components/PasswordDialog'
 import { initPtyListeners } from './lib/pty-listeners'
 import type { AppState } from './types'
 import { tauriAPI } from './lib/tauri-bridge'
+import { getAllTerminalContents } from './lib/terminal-registry'
 
 // Initialize PTY listeners once at app startup
 initPtyListeners()
@@ -18,6 +20,14 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>('default')
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)
+  // Password dialog state
+  const [passwordDialog, setPasswordDialog] = useState<{
+    mode: 'set' | 'unlock' | 'confirm-delete'
+    workspaceId: string
+    workspaceName: string
+    hint?: string
+  } | null>(null)
+  const [passwordError, setPasswordError] = useState('')
 
   // Apply saved theme on startup
   useEffect(() => {
@@ -95,6 +105,130 @@ export default function App() {
       workspaceStore.save()
     }
   }, [])
+
+  // Lock workspace handler - uses session password if available, otherwise shows dialog
+  const handleLockWorkspace = useCallback(async (workspaceId: string) => {
+    const workspace = state.workspaces.find(w => w.id === workspaceId)
+    if (!workspace) return
+
+    // Check if we have a session password (from previous unlock in this session)
+    const sessionPassword = workspaceStore.getSessionPassword(workspaceId)
+    if (sessionPassword) {
+      // Quick re-lock with cached password
+      try {
+        const terminals = workspaceStore.getAllWorkspaceTerminals(workspaceId)
+        const terminalContents = getAllTerminalContents()
+        const dataToEncrypt = JSON.stringify({
+          terminals: terminals.map(t => ({
+            id: t.id,
+            title: t.title,
+            cwd: t.cwd,
+            splitFromId: t.splitFromId,
+            scrollbackContent: terminalContents.get(t.id)
+          })),
+          splitTerminalId: state.splitTerminalId,
+          splitDirection: state.splitDirection
+        })
+        const encryptedData = await tauriAPI.crypto.encrypt(dataToEncrypt, sessionPassword, workspace.passwordHint)
+        workspaceStore.lockWorkspace(workspaceId, encryptedData, workspace.passwordHint)
+        workspaceStore.save()
+        return
+      } catch {
+        // If re-encryption fails, fall through to show password dialog
+        workspaceStore.clearSessionPassword(workspaceId)
+      }
+    }
+
+    // No session password - show dialog to set new password
+    setPasswordError('')
+    setPasswordDialog({
+      mode: 'set',
+      workspaceId,
+      workspaceName: workspace.name
+    })
+  }, [state.workspaces])
+
+  // Unlock workspace handler - shows password unlock dialog
+  const handleUnlockWorkspace = useCallback((workspaceId: string) => {
+    const workspace = state.workspaces.find(w => w.id === workspaceId)
+    if (!workspace) return
+    setPasswordError('')
+    setPasswordDialog({
+      mode: 'unlock',
+      workspaceId,
+      workspaceName: workspace.name,
+      hint: workspace.passwordHint
+    })
+  }, [state.workspaces])
+
+  // Handle password submission
+  const handlePasswordSubmit = useCallback(async (password: string, hint?: string) => {
+    if (!passwordDialog) return
+
+    try {
+      if (passwordDialog.mode === 'set') {
+        // Encrypt ALL workspace terminals including splits
+        const terminals = workspaceStore.getAllWorkspaceTerminals(passwordDialog.workspaceId)
+        const terminalContents = getAllTerminalContents()
+        const dataToEncrypt = JSON.stringify({
+          terminals: terminals.map(t => ({
+            id: t.id,
+            title: t.title,
+            cwd: t.cwd,
+            splitFromId: t.splitFromId,  // Preserve split relationship
+            scrollbackContent: terminalContents.get(t.id)
+          })),
+          // Also save split state
+          splitTerminalId: state.splitTerminalId,
+          splitDirection: state.splitDirection
+        })
+
+        const encryptedData = await tauriAPI.crypto.encrypt(dataToEncrypt, password, hint)
+        workspaceStore.lockWorkspace(passwordDialog.workspaceId, encryptedData, hint)
+        // Cache password for quick re-lock in this session
+        workspaceStore.setSessionPassword(passwordDialog.workspaceId, password)
+        workspaceStore.save()
+        setPasswordDialog(null)
+      } else if (passwordDialog.mode === 'unlock') {
+        // Decrypt workspace data
+        const workspace = state.workspaces.find(w => w.id === passwordDialog.workspaceId)
+        if (!workspace?.encryptedData) return
+
+        // Decrypt and restore terminals
+        const decryptedData = await tauriAPI.crypto.decrypt(workspace.encryptedData, password)
+        const parsed = JSON.parse(decryptedData)
+        // Successfully decrypted - unlock workspace and restore terminals (including splits)
+        workspaceStore.unlockWorkspace(passwordDialog.workspaceId, {
+          terminals: parsed.terminals,
+          splitTerminalId: parsed.splitTerminalId,
+          splitDirection: parsed.splitDirection
+        })
+        // Cache password for quick re-lock in this session
+        workspaceStore.setSessionPassword(passwordDialog.workspaceId, password)
+        workspaceStore.save()
+        setPasswordDialog(null)
+      }
+    } catch {
+      setPasswordError('Incorrect password')
+    }
+  }, [passwordDialog, state.workspaces])
+
+  // Handle forgot password - show delete confirmation
+  const handleForgotPassword = useCallback(() => {
+    if (!passwordDialog) return
+    setPasswordDialog({
+      ...passwordDialog,
+      mode: 'confirm-delete'
+    })
+  }, [passwordDialog])
+
+  // Handle delete locked workspace
+  const handleDeleteLockedWorkspace = useCallback(() => {
+    if (!passwordDialog) return
+    workspaceStore.removeWorkspace(passwordDialog.workspaceId)
+    workspaceStore.save()
+    setPasswordDialog(null)
+  }, [passwordDialog])
 
   const activeWorkspace = state.workspaces.find(w => w.id === state.activeWorkspaceId)
 
@@ -277,6 +411,8 @@ export default function App() {
           workspaceStore.save()
         }}
         onSettingsClick={() => setShowSettings(true)}
+        onLockWorkspace={handleLockWorkspace}
+        onUnlockWorkspace={handleUnlockWorkspace}
         showShortcutHints={showShortcutHints}
       />
       <main className="main-content">
@@ -296,6 +432,7 @@ export default function App() {
                 splitDirection={state.splitDirection}
                 focusedPane={state.focusedPane}
                 showShortcutHints={showShortcutHints && workspace.id === state.activeWorkspaceId}
+                onUnlockRequest={handleUnlockWorkspace}
               />
             </div>
           ))
@@ -318,6 +455,18 @@ export default function App() {
         <CloseConfirmDialog
           onConfirm={handleCloseConfirm}
           onCancel={handleCloseCancel}
+        />
+      )}
+
+      {passwordDialog && (
+        <PasswordDialog
+          mode={passwordDialog.mode}
+          workspaceName={passwordDialog.workspaceName}
+          hint={passwordDialog.hint}
+          error={passwordError}
+          onSubmit={handlePasswordSubmit}
+          onCancel={() => setPasswordDialog(null)}
+          onDelete={passwordDialog.mode === 'unlock' ? handleForgotPassword : handleDeleteLockedWorkspace}
         />
       )}
     </div>
