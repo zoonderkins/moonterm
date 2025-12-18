@@ -66,6 +66,27 @@ export default function App() {
     return unsubscribe
   }, [])
 
+  // Auto-save on exit and periodically
+  useEffect(() => {
+    // Save before window closes
+    const handleBeforeUnload = () => {
+      workspaceStore.save()
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // Also save periodically (every 30 seconds) to avoid data loss
+    const saveInterval = setInterval(() => {
+      if (state.terminals.length > 0) {
+        workspaceStore.save()
+      }
+    }, 30000)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      clearInterval(saveInterval)
+    }
+  }, [state.terminals.length])
+
   const handleAddWorkspace = useCallback(async () => {
     const folderPath = await tauriAPI.dialog.selectFolder()
     if (folderPath) {
@@ -86,33 +107,28 @@ export default function App() {
   // Add new terminal to current workspace
   const handleAddTerminal = useCallback(() => {
     if (!activeWorkspace) return
-    const terminal = workspaceStore.addTerminal(activeWorkspace.id)
-    tauriAPI.pty.create({
-      id: terminal.id,
-      cwd: activeWorkspace.folderPath
-    })
+    // Just add terminal to store, PTY will be created by TerminalPanel
+    workspaceStore.addTerminal(activeWorkspace.id)
   }, [activeWorkspace])
 
-  // Split the current terminal
+  // Split the current terminal (toggle mode)
   const handleSplitTerminal = useCallback((direction: 'horizontal' | 'vertical' = 'horizontal') => {
     const focusedId = state.focusedTerminalId
     if (!focusedId || !activeWorkspace) return
 
-    // If already split, close the split
+    // If already split
     if (state.splitTerminalId) {
-      workspaceStore.closeSplit()
+      // Same direction → toggle off (close split)
+      if (state.splitDirection === direction) {
+        workspaceStore.closeSplit()
+      }
+      // Different direction → do nothing (keep the existing split)
       return
     }
 
-    // Create a split terminal
-    const splitTerminal = workspaceStore.splitTerminal(focusedId, direction)
-    if (splitTerminal) {
-      tauriAPI.pty.create({
-        id: splitTerminal.id,
-        cwd: splitTerminal.cwd
-      })
-    }
-  }, [state.focusedTerminalId, state.splitTerminalId, activeWorkspace])
+    // No split → create new split (PTY will be created by TerminalPanel)
+    workspaceStore.splitTerminal(focusedId, direction)
+  }, [state.focusedTerminalId, state.splitTerminalId, state.splitDirection, activeWorkspace])
 
   // Close current terminal tab
   const handleCloseTerminal = useCallback(() => {

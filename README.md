@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.2-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Tauri](https://img.shields.io/badge/tauri-2.x-FFC131.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -23,6 +23,7 @@
 - **Keyboard Shortcuts** - Quick switching with Ctrl+1-9, Cmd+T, Cmd+D
 - **Theme Support** - 5 built-in color themes (Default Dark, Purple Night, Pink Blossom, Pure Black, Colorblind Safe)
 - **Session Export/Import** - Save and restore workspace layouts and settings as JSON
+- **Terminal History Persistence** - Scrollback history saved and restored across app restarts
 - **Scroll History** - Terminal history preserved when switching tabs and workspaces
 - **Nerd Font Support** - Powerlevel10k / Powerline compatible with Nerd Fonts
 - **WebGL Rendering** - GPU-accelerated terminal rendering
@@ -194,6 +195,47 @@ Config files location (Tauri app data directory):
 - **macOS**: `~/Library/Application Support/dev.edoo.moonterm/`
 - **Windows**: `%APPDATA%/dev.edoo.moonterm/`
 - **Linux**: `~/.local/share/dev.edoo.moonterm/`
+
+---
+
+## Storage Schema Versions
+
+Storage schema versions are displayed in Settings → About section. These versions help track data format compatibility.
+
+| Schema | Version | Description |
+|--------|---------|-------------|
+| Workspace | 1.0.0 | Main data: workspaces, terminals, scrollback |
+| Session | 1.0.0 | Export/import format |
+| Settings | 1.0.0 | Theme and local settings |
+
+### Workspace Data Format
+
+The workspace data is saved to `workspace.json` in the config directory:
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "savedAt": "2024-01-15T10:30:00.000Z",
+  "workspaces": [...],
+  "activeWorkspaceId": "uuid",
+  "terminals": [
+    {
+      "id": "term-1",
+      "workspaceId": "uuid",
+      "title": "Terminal 1",
+      "cwd": "/path/to/project",
+      "scrollbackContent": "$ npm run dev..."
+    }
+  ],
+  "focusedTerminalId": "term-1"
+}
+```
+
+### Auto-Save Behavior
+
+- **On exit**: Automatically saves before app closes
+- **Periodic**: Saves every 30 seconds when terminals are open
+- **On changes**: Saves when workspaces are added/removed/renamed
 
 ---
 

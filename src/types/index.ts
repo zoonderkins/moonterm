@@ -14,6 +14,8 @@ export interface TerminalInstance {
   scrollbackBuffer: string[];
   // Split support: ID of the terminal that this one is split from
   splitFromId?: string;
+  // Saved scrollback content for restoration after app restart
+  savedScrollbackContent?: string;
 }
 
 export type SplitDirection = 'horizontal' | 'vertical';

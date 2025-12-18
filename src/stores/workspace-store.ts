@@ -1,6 +1,17 @@
 import { v4 as uuidv4 } from 'uuid'
 import type { Workspace, TerminalInstance, AppState, SplitDirection, FocusedPane } from '../types'
 import { tauriAPI } from '../lib/tauri-bridge'
+import { getAllTerminalContents } from '../lib/terminal-registry'
+import { STORAGE_SCHEMA } from '../lib/version'
+
+// Saved terminal data with scrollback content
+interface SavedTerminal {
+  id: string
+  workspaceId: string
+  title: string
+  cwd: string
+  scrollbackContent?: string
+}
 
 type Listener = () => void
 
@@ -137,14 +148,39 @@ class WorkspaceStore {
   }
 
   removeTerminal(id: string): void {
-    const terminals = this.state.terminals.filter(t => t.id !== id)
+    const oldTerminals = this.state.terminals
+    const terminals = oldTerminals.filter(t => t.id !== id)
+
+    let newFocusedId = this.state.focusedTerminalId
+
+    // If closing the focused terminal, switch to adjacent tab
+    if (this.state.focusedTerminalId === id) {
+      const closedTerminal = oldTerminals.find(t => t.id === id)
+      if (closedTerminal) {
+        // Get terminals in the same workspace (excluding split panes)
+        const workspaceTerminals = oldTerminals.filter(
+          t => t.workspaceId === closedTerminal.workspaceId && !t.splitFromId
+        )
+        const closedIndex = workspaceTerminals.findIndex(t => t.id === id)
+
+        // Find the new terminal to focus (prefer previous, then next)
+        const remainingWorkspaceTerminals = workspaceTerminals.filter(t => t.id !== id)
+        if (remainingWorkspaceTerminals.length > 0) {
+          // If closedIndex > 0, focus the previous tab; otherwise focus the new first tab
+          const targetIndex = closedIndex > 0 ? closedIndex - 1 : 0
+          newFocusedId = remainingWorkspaceTerminals[targetIndex]?.id ?? null
+        } else {
+          newFocusedId = null
+        }
+      } else {
+        newFocusedId = terminals[0]?.id ?? null
+      }
+    }
 
     this.state = {
       ...this.state,
       terminals,
-      focusedTerminalId: this.state.focusedTerminalId === id
-        ? (terminals[0]?.id ?? null)
-        : this.state.focusedTerminalId
+      focusedTerminalId: newFocusedId
     }
 
     this.notify()
@@ -231,7 +267,8 @@ class WorkspaceStore {
       ...this.state,
       terminals: [...this.state.terminals, splitTerminal],
       splitTerminalId: splitTerminal.id,
-      splitDirection: direction
+      splitDirection: direction,
+      focusedPane: 'split'  // Auto-focus the new split pane
     }
 
     this.notify()
@@ -260,6 +297,18 @@ class WorkspaceStore {
     return this.state.splitDirection
   }
 
+  setSplitDirection(direction: SplitDirection): void {
+    if (!this.state.splitTerminalId) return
+    if (this.state.splitDirection === direction) return
+
+    this.state = {
+      ...this.state,
+      splitDirection: direction
+    }
+
+    this.notify()
+  }
+
   getSplitTerminal(): TerminalInstance | null {
     if (!this.state.splitTerminalId) return null
     return this.state.terminals.find(t => t.id === this.state.splitTerminalId) || null
@@ -285,9 +334,27 @@ class WorkspaceStore {
 
   // Persistence
   async save(): Promise<void> {
+    // Get scrollback content from terminal registry
+    const terminalContents = getAllTerminalContents()
+
+    // Save terminals with their scrollback content (excluding split panes)
+    const savedTerminals: SavedTerminal[] = this.state.terminals
+      .filter(t => !t.splitFromId)  // Don't save split panes
+      .map(t => ({
+        id: t.id,
+        workspaceId: t.workspaceId,
+        title: t.title,
+        cwd: t.cwd,
+        scrollbackContent: terminalContents.get(t.id)
+      }))
+
     const data = JSON.stringify({
+      schemaVersion: STORAGE_SCHEMA.WORKSPACE,
+      savedAt: new Date().toISOString(),
       workspaces: this.state.workspaces,
-      activeWorkspaceId: this.state.activeWorkspaceId
+      activeWorkspaceId: this.state.activeWorkspaceId,
+      terminals: savedTerminals,
+      focusedTerminalId: this.state.focusedTerminalId
     })
     await tauriAPI.workspace.save(data)
   }
@@ -297,10 +364,24 @@ class WorkspaceStore {
     if (data) {
       try {
         const parsed = JSON.parse(data)
+
+        // Restore terminals from saved data
+        const savedTerminals: SavedTerminal[] = parsed.terminals || []
+        const terminals: TerminalInstance[] = savedTerminals.map(t => ({
+          id: t.id,
+          workspaceId: t.workspaceId,
+          title: t.title,
+          cwd: t.cwd,
+          scrollbackBuffer: [],  // Will be restored when TerminalPanel mounts
+          savedScrollbackContent: t.scrollbackContent  // Store for restoration
+        }))
+
         this.state = {
           ...this.state,
           workspaces: parsed.workspaces || [],
-          activeWorkspaceId: parsed.activeWorkspaceId || null
+          activeWorkspaceId: parsed.activeWorkspaceId || null,
+          terminals,
+          focusedTerminalId: parsed.focusedTerminalId || null
         }
         this.notify()
       } catch (e) {

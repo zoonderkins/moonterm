@@ -28,7 +28,7 @@ export interface SessionWorkspace {
 
 export interface SessionData {
   // Schema version for future compatibility
-  version: '1.0'
+  version: string
   // Export timestamp
   exportedAt: string
   // App version

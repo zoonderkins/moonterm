@@ -54,11 +54,8 @@ export function WorkspaceView({
   // Auto-create first terminal only for new workspaces that never had terminals
   useEffect(() => {
     if (terminals.length === 0 && !hadTerminalsRef.current) {
-      const terminal = workspaceStore.addTerminal(workspace.id)
-      tauriAPI.pty.create({
-        id: terminal.id,
-        cwd: workspace.folderPath
-      })
+      // Just add terminal to store, PTY will be created by TerminalPanel
+      workspaceStore.addTerminal(workspace.id)
     }
   }, [workspace.id, terminals.length, workspace.folderPath])
 
@@ -70,12 +67,9 @@ export function WorkspaceView({
   }, [focusedTerminalId, terminals])
 
   const handleAddTerminal = useCallback(() => {
-    const terminal = workspaceStore.addTerminal(workspace.id)
-    tauriAPI.pty.create({
-      id: terminal.id,
-      cwd: workspace.folderPath
-    })
-  }, [workspace.id, workspace.folderPath])
+    // Just add terminal to store, PTY will be created by TerminalPanel
+    workspaceStore.addTerminal(workspace.id)
+  }, [workspace.id])
 
   const handleCloseTerminal = useCallback((id: string) => {
     // If closing the main terminal that has a split, also close the split
@@ -166,6 +160,8 @@ export function WorkspaceView({
                 <TerminalPanel
                   terminalId={terminal.id}
                   isActive={terminal.id === mainTerminal?.id && focusedPane === 'main'}
+                  cwd={terminal.cwd}
+                  savedScrollbackContent={terminal.savedScrollbackContent}
                 />
               </div>
             ))}
@@ -190,6 +186,7 @@ export function WorkspaceView({
                 <TerminalPanel
                   terminalId={splitTerminal.id}
                   isActive={focusedPane === 'split'}
+                  cwd={splitTerminal.cwd}
                 />
               </div>
             </>

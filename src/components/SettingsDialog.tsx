@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { tauriAPI } from '../lib/tauri-bridge'
 import { workspaceStore } from '../stores/workspace-store'
 import { downloadSessionFile, importSession } from '../lib/session-manager'
+import { APP_VERSION, STORAGE_SCHEMA } from '../lib/version'
 
 // Theme definitions
 export const themes = {
@@ -196,7 +197,7 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
           </p>
         </div>
 
-        {/* GitHub */}
+        {/* About & Version Info */}
         <div className="settings-section">
           <label className="settings-label">About</label>
           <div className="github-link">
@@ -211,7 +212,15 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
             >
               GitHub Repository
             </a>
-            <span className="version">v1.0.0</span>
+            <span className="version">v{APP_VERSION}</span>
+          </div>
+          <div className="schema-versions">
+            <p className="settings-hint" style={{ marginBottom: '4px' }}>Storage Schema Versions:</p>
+            <div className="schema-list">
+              <code>Workspace: {STORAGE_SCHEMA.WORKSPACE}</code>
+              <code>Session: {STORAGE_SCHEMA.SESSION}</code>
+              <code>Settings: {STORAGE_SCHEMA.SETTINGS}</code>
+            </div>
           </div>
         </div>
 

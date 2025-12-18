@@ -2,8 +2,7 @@ import type { SessionData, SessionWorkspace, SessionTerminal } from '../types/se
 import { workspaceStore } from '../stores/workspace-store'
 import { getAllTerminalContents } from './terminal-registry'
 import { getSavedTheme } from '../components/SettingsDialog'
-
-const APP_VERSION = '1.0.0'
+import { APP_VERSION, STORAGE_SCHEMA } from './version'
 
 /**
  * Export current session state to JSON
@@ -36,7 +35,7 @@ export function exportSession(): SessionData {
   })
 
   return {
-    version: '1.0',
+    version: STORAGE_SCHEMA.SESSION,
     exportedAt: new Date().toISOString(),
     appVersion: APP_VERSION,
     theme: getSavedTheme(),

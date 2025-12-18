@@ -13,9 +13,11 @@ import { workspaceStore } from '../stores/workspace-store'
 interface TerminalPanelProps {
   terminalId: string
   isActive: boolean
+  cwd?: string  // CWD for creating PTY
+  savedScrollbackContent?: string  // Saved content to restore
 }
 
-export function TerminalPanel({ terminalId, isActive }: TerminalPanelProps) {
+export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackContent }: TerminalPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -49,6 +51,11 @@ export function TerminalPanel({ terminalId, isActive }: TerminalPanelProps) {
     terminal.unicode.activeVersion = '11'
     terminal.open(containerRef.current)
 
+    // Restore saved scrollback content if available
+    if (savedScrollbackContent) {
+      terminal.write(savedScrollbackContent)
+    }
+
     // Load WebGL addon for better font rendering and performance
     try {
       const webglAddon = new WebglAddon()
@@ -69,6 +76,11 @@ export function TerminalPanel({ terminalId, isActive }: TerminalPanelProps) {
 
     // Register terminal for session export
     registerTerminalInstance(terminalId, terminal, serializeAddon)
+
+    // Create PTY for this terminal (will be no-op if already exists on Rust side)
+    if (cwd) {
+      tauriAPI.pty.create({ id: terminalId, cwd })
+    }
 
     // Input handler
     terminal.onData((data) => {
