@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import type { Workspace } from '../types'
 import { workspaceStore } from '../stores/workspace-store'
 import { ActivityIndicator } from './ActivityIndicator'
-import { RoleBadge } from './RoleBadge'
 
 interface SidebarProps {
   workspaces: Workspace[]
@@ -33,6 +32,7 @@ export function Sidebar({
     const saved = localStorage.getItem('sidebarCollapsed')
     return saved === 'true'
   })
+  const [activeWorkspaces, setActiveWorkspaces] = useState<Set<string>>(new Set())
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -41,6 +41,28 @@ export function Sidebar({
       inputRef.current.select()
     }
   }, [editingId])
+
+  // Track workspace activity for background color
+  useEffect(() => {
+    const checkAllActivity = () => {
+      const activeSet = new Set<string>()
+      workspaces.forEach(ws => {
+        if (workspaceStore.isWorkspaceActive(ws.id)) {
+          activeSet.add(ws.id)
+        }
+      })
+      setActiveWorkspaces(activeSet)
+    }
+
+    checkAllActivity()
+    const interval = setInterval(checkAllActivity, 1000)
+    const unsubscribe = workspaceStore.subscribe(checkAllActivity)
+
+    return () => {
+      clearInterval(interval)
+      unsubscribe()
+    }
+  }, [workspaces])
 
   const handleToggleCollapse = () => {
     const newState = !isCollapsed
@@ -97,7 +119,7 @@ export function Sidebar({
         {workspaces.map((workspace, index) => (
           <div
             key={workspace.id}
-            className={`workspace-item ${workspace.id === activeWorkspaceId ? 'active' : ''}`}
+            className={`workspace-item ${workspace.id === activeWorkspaceId ? 'active' : ''} ${activeWorkspaces.has(workspace.id) ? 'running' : ''}`}
             onClick={() => onSelectWorkspace(workspace.id)}
             onDoubleClick={(e) => {
               e.stopPropagation()
@@ -135,7 +157,6 @@ export function Sidebar({
                   )}
                 </div>
                 <div className="workspace-meta">
-                  <RoleBadge workspaceId={workspace.id} roleId={workspace.roleId} />
                   <span
                     className={`lock-icon ${workspace.isLocked ? 'locked' : 'unlocked'}`}
                     onClick={(e) => {

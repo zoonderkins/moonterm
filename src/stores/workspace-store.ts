@@ -95,17 +95,6 @@ class WorkspaceStore {
     this.notify()
   }
 
-  setWorkspaceRole(id: string, roleId: string | undefined): void {
-    this.state = {
-      ...this.state,
-      workspaces: this.state.workspaces.map(w =>
-        w.id === id ? { ...w, roleId } : w
-      )
-    }
-
-    this.notify()
-  }
-
   // Lock a workspace with encrypted data
   // Also removes terminals for this workspace (they're now encrypted)
   lockWorkspace(id: string, encryptedData: string, hint?: string): void {
