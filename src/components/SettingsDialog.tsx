@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { tauriAPI } from '../lib/tauri-bridge'
 import { workspaceStore } from '../stores/workspace-store'
 import { downloadSessionFile, importSession } from '../lib/session-manager'
-import { APP_VERSION, STORAGE_SCHEMA } from '../lib/version'
+import { STORAGE_SCHEMA } from '../lib/version'
 
 // Theme definitions
 export const themes = {
