@@ -197,7 +197,7 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
           </p>
         </div>
 
-        {/* About & Version Info */}
+        {/* About */}
         <div className="settings-section">
           <label className="settings-label">About</label>
           <div className="github-link">
@@ -212,7 +212,6 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
             >
               GitHub Repository
             </a>
-            <span className="version">v{APP_VERSION}</span>
           </div>
           <div className="schema-versions">
             <p className="settings-hint" style={{ marginBottom: '4px' }}>Storage Schema Versions:</p>
