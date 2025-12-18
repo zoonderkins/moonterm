@@ -30,7 +30,7 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       // Nerd Fonts for Powerline/Powerlevel10k support, with fallbacks
       fontFamily: '"MesloLGS NF", "FiraCode Nerd Font", "Hack Nerd Font", "JetBrainsMono Nerd Font", Menlo, Monaco, "Courier New", monospace',
       cursorBlink: true,
-      scrollback: 10000,
+      scrollback: 5000,  // Limit scrollback for storage efficiency
       allowProposedApi: true,
       // Convert LF to CRLF - important for apps that only send \n
       convertEol: true,

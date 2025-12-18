@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Tauri](https://img.shields.io/badge/tauri-2.x-FFC131.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -204,17 +204,18 @@ Storage schema versions are displayed in Settings → About section. These versi
 
 | Schema | Version | Description |
 |--------|---------|-------------|
-| Workspace | 1.0.0 | Main data: workspaces, terminals, scrollback |
+| Workspace | 1.1.0 | Main data: workspaces, terminals, scrollback (gzip compressed) |
 | Session | 1.0.0 | Export/import format |
 | Settings | 1.0.0 | Theme and local settings |
 
 ### Workspace Data Format
 
-The workspace data is saved to `workspace.json` in the config directory:
+The workspace data is saved to `workspaces.json.gz` (gzip compressed) in the config directory.
+History versions are stored in the `history/` subdirectory (max 10 files).
 
 ```json
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "savedAt": "2024-01-15T10:30:00.000Z",
   "workspaces": [...],
   "activeWorkspaceId": "uuid",
