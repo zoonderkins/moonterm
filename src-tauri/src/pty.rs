@@ -8,6 +8,56 @@ use std::sync::Arc;
 use std::thread;
 use tauri::{AppHandle, Emitter};
 
+/// Find the last valid UTF-8 boundary in a byte slice.
+/// Returns the length up to which bytes form valid UTF-8.
+/// This prevents cutting multi-byte UTF-8 characters mid-sequence.
+fn find_utf8_boundary(bytes: &[u8]) -> usize {
+    if bytes.is_empty() {
+        return 0;
+    }
+
+    // Check if the entire slice is valid UTF-8
+    if std::str::from_utf8(bytes).is_ok() {
+        return bytes.len();
+    }
+
+    // Walk backwards to find where an incomplete sequence might start
+    // UTF-8 continuation bytes start with 10xxxxxx (0x80-0xBF)
+    // Leading bytes for multi-byte: 110xxxxx (2-byte), 1110xxxx (3-byte), 11110xxx (4-byte)
+    let mut end = bytes.len();
+
+    // Check up to 4 bytes back (max UTF-8 sequence length)
+    for i in 1..=4.min(bytes.len()) {
+        let pos = bytes.len() - i;
+        let byte = bytes[pos];
+
+        // If this is a leading byte of a multi-byte sequence
+        if byte >= 0xC0 {
+            // Check if the sequence is complete
+            let expected_len = if byte >= 0xF0 {
+                4
+            } else if byte >= 0xE0 {
+                3
+            } else {
+                2
+            };
+
+            let remaining = bytes.len() - pos;
+            if remaining < expected_len {
+                // Incomplete sequence, cut before it
+                end = pos;
+            }
+            break;
+        } else if byte < 0x80 {
+            // ASCII byte, we're good
+            break;
+        }
+        // Continuation byte (0x80-0xBF), keep looking back
+    }
+
+    end
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreatePtyOptions {
     pub id: String,
@@ -132,10 +182,13 @@ impl PtyManager {
     ) -> Result<(), String> {
         let pty_system = native_pty_system();
 
+        // Use reasonable defaults that work well with most terminal UIs
+        // The frontend will send the actual size via resize() shortly after creation
+        // Using 24x80 (classic VT100 size) reduces visual glitches during initialization
         let pair = pty_system
             .openpty(PtySize {
-                rows: 30,
-                cols: 120,
+                rows: 24,
+                cols: 80,
                 pixel_width: 0,
                 pixel_height: 0,
             })
@@ -177,20 +230,45 @@ impl PtyManager {
 
         thread::spawn(move || {
             let mut buf_reader = BufReader::new(reader);
-            let mut buf = [0u8; 4096];
+            // Larger buffer to reduce ANSI sequence fragmentation
+            // Claude Code and other TUI apps emit many escape sequences
+            let mut buf = [0u8; 16384];
+            // Pending incomplete UTF-8 bytes from previous read
+            let mut pending: Vec<u8> = Vec::new();
 
             loop {
                 match buf_reader.read(&mut buf) {
                     Ok(0) => break, // EOF
                     Ok(n) => {
-                        let data = String::from_utf8_lossy(&buf[..n]).to_string();
-                        let _ = app_handle.emit("pty:output", (&id, &data));
+                        // Combine pending bytes with new data
+                        let mut data_bytes = std::mem::take(&mut pending);
+                        data_bytes.extend_from_slice(&buf[..n]);
+
+                        // Find the last valid UTF-8 boundary
+                        // This prevents cutting multi-byte characters or escape sequences
+                        let valid_len = find_utf8_boundary(&data_bytes);
+
+                        if valid_len > 0 {
+                            let data = String::from_utf8_lossy(&data_bytes[..valid_len]).to_string();
+                            let _ = app_handle.emit("pty:output", (&id, &data));
+                        }
+
+                        // Keep incomplete bytes for next iteration
+                        if valid_len < data_bytes.len() {
+                            pending = data_bytes[valid_len..].to_vec();
+                        }
                     }
                     Err(e) => {
                         eprintln!("Read error: {}", e);
                         break;
                     }
                 }
+            }
+
+            // Flush any remaining pending bytes
+            if !pending.is_empty() {
+                let data = String::from_utf8_lossy(&pending).to_string();
+                let _ = app_handle.emit("pty:output", (&id, &data));
             }
         });
 

@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { SerializeAddon } from '@xterm/addon-serialize'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
 import '@xterm/xterm/css/xterm.css'
 import { tauriAPI } from '../lib/tauri-bridge'
 import { registerTerminal, unregisterTerminal } from '../lib/pty-listeners'
@@ -29,12 +30,23 @@ export function TerminalPanel({ terminalId, isActive }: TerminalPanelProps) {
       cursorBlink: true,
       scrollback: 10000,
       allowProposedApi: true,
+      // Convert LF to CRLF - important for apps that only send \n
+      convertEol: true,
+      // Improve rendering for TUI apps like Claude Code
+      fastScrollModifier: 'alt',
+      fastScrollSensitivity: 5,
+      // Reduce visual glitches during rapid updates
+      smoothScrollDuration: 0,
     })
 
     const fitAddon = new FitAddon()
     const serializeAddon = new SerializeAddon()
+    const unicode11Addon = new Unicode11Addon()
     terminal.loadAddon(fitAddon)
     terminal.loadAddon(serializeAddon)
+    terminal.loadAddon(unicode11Addon)
+    // Activate Unicode 11 for better emoji and special character support
+    terminal.unicode.activeVersion = '11'
     terminal.open(containerRef.current)
 
     // Load WebGL addon for better font rendering and performance

@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.2-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Tauri](https://img.shields.io/badge/tauri-2.x-FFC131.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -268,6 +268,28 @@ The app should work with login shell by default. If issues persist, check that y
 ### Terminal shows garbled characters?
 
 The app sets `TERM=xterm-256color` automatically. If you see issues, ensure your shell prompt (like Powerlevel10k) is compatible.
+
+---
+
+## Technical Notes
+
+### Unicode 11 Support
+
+Moonterm includes `@xterm/addon-unicode11` for proper handling of:
+- Emoji characters and sequences
+- Wide characters (CJK, etc.)
+- Special symbols and icons used by modern CLI tools
+
+### TUI Application Compatibility
+
+For applications using TUI frameworks (like **Claude Code CLI** which uses [Ink](https://github.com/vadimdemedes/ink) - React for CLI), Moonterm includes optimizations:
+
+- **Larger PTY buffer** (16KB) to reduce ANSI escape sequence fragmentation
+- **UTF-8 boundary detection** to prevent cutting multi-byte characters
+- **convertEol** enabled for proper line ending handling
+- **smoothScrollDuration: 0** for instant updates during rapid redraws
+
+These optimizations help reduce visual glitches like extra blank lines during fast terminal updates.
 
 ---
 

@@ -101,7 +101,41 @@ View in terminal where `npm run tauri:dev` is running.
 
 ### Common Issues
 
-#### 1. Character Duplication in Terminal
+#### 1. TUI Applications (Claude Code CLI, etc.)
+
+**Symptoms:** Extra blank lines, flickering, or garbled output when using CLI tools with rich UIs.
+
+**Background:**
+- **Claude Code CLI** uses [Ink](https://github.com/vadimdemedes/ink) (React for CLI) for rendering
+- Ink generates intensive ANSI escape sequences for cursor movement (`ESC[nA`, `ESC[nB`), line clearing (`ESC[K`), and screen updates
+- These TUI frameworks expect terminals to handle rapid redraws correctly
+
+**Solutions implemented in Moonterm:**
+
+1. **Larger PTY buffer (16KB)** - Reduces fragmentation of ANSI escape sequences
+   ```rust
+   // pty.rs
+   let mut buf = [0u8; 16384];
+   ```
+
+2. **UTF-8 boundary detection** - Prevents cutting multi-byte characters mid-sequence
+   ```rust
+   let valid_len = find_utf8_boundary(&data_bytes);
+   ```
+
+3. **xterm.js options** - Optimized for TUI apps
+   ```typescript
+   convertEol: true,        // LF → CRLF conversion
+   smoothScrollDuration: 0, // Instant updates
+   ```
+
+4. **Unicode 11 support** - Proper emoji and wide character handling
+   ```typescript
+   terminal.loadAddon(unicode11Addon)
+   terminal.unicode.activeVersion = '11'
+   ```
+
+#### 2. Character Duplication in Terminal
 
 **Cause:** Missing `TERM` environment variable.
 
@@ -110,7 +144,7 @@ View in terminal where `npm run tauri:dev` is running.
 env_vars.insert("TERM".to_string(), "xterm-256color".to_string());
 ```
 
-#### 2. PATH Not Loaded (brew, node, etc. not found)
+#### 3. PATH Not Loaded (brew, node, etc. not found)
 
 **Cause:** App launched from Finder doesn't inherit shell PATH.
 
@@ -133,7 +167,7 @@ And add common paths:
 }
 ```
 
-#### 3. Duplicate PTY Events
+#### 4. Duplicate PTY Events
 
 **Cause:** React component re-mounting creates multiple listeners.
 
@@ -147,7 +181,46 @@ export async function initPtyListeners() {
 }
 ```
 
-#### 4. DMG Missing App
+#### 5. Zsh/Powerlevel10k Garbled Characters
+
+**Symptoms:** Broken glyphs, incorrect character widths, or missing icons in Powerlevel10k prompt.
+
+**Background:**
+- Powerlevel10k uses special Unicode glyphs for icons (Git branch, folder icons, etc.)
+- These require proper UTF-8 encoding and Nerd Font support
+- ANSI escape sequences control cursor positioning based on character width
+
+**Solutions implemented:**
+
+1. **UTF-8 environment variables** - Ensures proper encoding
+   ```rust
+   // pty.rs
+   env_vars.insert("LANG".to_string(), "en_US.UTF-8".to_string());
+   env_vars.insert("LC_ALL".to_string(), "en_US.UTF-8".to_string());
+   ```
+
+2. **TERM variable** - Enables color and escape sequence support
+   ```rust
+   env_vars.insert("TERM".to_string(), "xterm-256color".to_string());
+   env_vars.insert("COLORTERM".to_string(), "truecolor".to_string());
+   ```
+
+3. **Unicode 11 addon** - Correct character width calculation for wide chars
+   ```typescript
+   terminal.loadAddon(unicode11Addon)
+   terminal.unicode.activeVersion = '11'
+   ```
+
+4. **Nerd Font fallback chain** - Ensures icons render correctly
+   ```typescript
+   fontFamily: '"MesloLGS NF", "FiraCode Nerd Font", "Hack Nerd Font", ...'
+   ```
+
+**User requirements:**
+- Install a Nerd Font (e.g., [MesloLGS NF](https://github.com/romkatv/powerlevel10k#fonts))
+- Run `p10k configure` after first launch if using Powerlevel10k
+
+#### 6. DMG Missing App
 
 **Cause:** Corrupted build cache.
 
