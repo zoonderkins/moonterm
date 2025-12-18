@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.6-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Tauri](https://img.shields.io/badge/tauri-2.x-FFC131.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -16,8 +16,8 @@
 ## Features
 
 - **Multi-Workspace Support** - Organize terminals by project folders
-- **Workspace Roles** - Color-coded project tags (Frontend, Backend, DevOps, etc.)
-- **Activity Indicators** - Visual feedback showing active/idle terminals with breathing animation
+- **Workspace Encryption** - Lock workspaces with AES-256-GCM encryption (password protected)
+- **Activity Indicators** - Workspace turns green when terminals are running, orange when idle
 - **Browser-Style Tabs** - Terminal tabs at top with hover preview
 - **Terminal Split** - Split terminals horizontally (Cmd+D) or vertically (Cmd+Shift+D)
 - **Split Pane Focus** - Click to switch focus between split panes (blue border indicates active)
@@ -248,6 +248,8 @@ History versions are stored in the `history/` subdirectory (max 10 files).
 moonterm/
 ├── src/                      # React frontend
 │   ├── components/           # UI components
+│   │   ├── PasswordDialog    # Workspace encryption dialog
+│   │   └── ActivityIndicator # Terminal activity status
 │   ├── lib/                  # Utilities (tauri-bridge, pty-listeners)
 │   ├── stores/               # State management
 │   └── styles/               # CSS
@@ -255,6 +257,7 @@ moonterm/
 │   ├── src/
 │   │   ├── lib.rs            # App entry
 │   │   ├── commands.rs       # IPC handlers
+│   │   ├── crypto.rs         # AES-256-GCM encryption
 │   │   ├── pty.rs            # PTY management
 │   │   └── workspace.rs      # Persistence
 │   └── tauri.conf.json
@@ -313,6 +316,37 @@ The app should work with login shell by default. If issues persist, check that y
 ### Terminal shows garbled characters?
 
 The app sets `TERM=xterm-256color` automatically. If you see issues, ensure your shell prompt (like Powerlevel10k) is compatible.
+
+---
+
+## Workspace Encryption
+
+Lock sensitive workspaces with password protection. Terminal content is encrypted using AES-256-GCM with Argon2id key derivation.
+
+### How to Use
+
+1. **Lock Workspace** - Click the 🔓 icon next to a workspace name
+2. **Set Password** - Enter a password (min 4 characters) and optional hint
+3. **Workspace Locked** - Shows 🔒 icon, terminal content encrypted and removed from memory
+4. **Unlock** - Click 🔒 icon, enter password to restore terminals
+
+### Security Details
+
+| Aspect | Implementation |
+|--------|----------------|
+| Encryption | AES-256-GCM (authenticated encryption) |
+| Key Derivation | Argon2id with random salt |
+| Storage | Encrypted blob stored in workspace data, never plain text |
+| Session Cache | Password cached in memory for quick re-lock (cleared on app restart) |
+
+### Behavior
+
+- **Lock**: Terminals encrypted → removed from state → PTY processes killed
+- **Unlock**: Password verified → terminals decrypted → restored with new PTY
+- **Split Preservation**: Split terminal layout (horizontal/vertical) is preserved
+- **App Restart**: Locked workspaces remain locked, require password to access
+
+> **Note**: If you forget your password, the workspace can only be deleted. There is no recovery option.
 
 ---
 

@@ -134,6 +134,10 @@ body {
   color: white;
 }
 
+.workspace-item.active.running {
+  background: #22c55e;
+}
+
 .workspace-item .remove-btn {
   opacity: 0;
   background: none;
@@ -1334,85 +1338,6 @@ body {
     opacity: 0.4;
     transform: scale(0.9);
   }
-}
-
-/* ========================================
-   Workspace Role Badge
-   ======================================== */
-.role-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 500;
-  flex-shrink: 0;
-  cursor: pointer;
-  transition: all 0.15s;
-  border: 1px solid transparent;
-}
-
-.role-badge:hover {
-  filter: brightness(1.1);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.role-badge .role-icon {
-  font-size: 11px;
-}
-
-.role-badge .role-name {
-  max-width: 50px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Role selector dropdown */
-.role-selector {
-  position: absolute;
-  top: 100%;
-  left: auto;
-  right: 0;
-  z-index: 100;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 4px;
-  min-width: 140px;
-  max-width: 180px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.role-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  white-space: nowrap;
-  transition: background 0.15s;
-}
-
-.role-option:hover {
-  background: var(--bg-hover);
-}
-
-.role-option.selected {
-  background: var(--accent-color);
-  color: white;
-}
-
-.role-option .role-icon {
-  font-size: 14px;
-}
-
-.role-option-clear {
-  color: var(--text-secondary);
-  font-style: italic;
 }
 
 /* Workspace item with role and activity */
