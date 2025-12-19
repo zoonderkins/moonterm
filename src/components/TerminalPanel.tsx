@@ -21,6 +21,7 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
+  const webglAddonRef = useRef<WebglAddon | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -62,8 +63,10 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       webglAddon.onContextLoss(() => {
         console.warn('[Terminal] WebGL context lost, falling back to canvas')
         webglAddon.dispose()
+        webglAddonRef.current = null
       })
       terminal.loadAddon(webglAddon)
+      webglAddonRef.current = webglAddon
       console.info('[Terminal] Using WebGL renderer (GPU accelerated)')
     } catch {
       // WebGL not available, fall back to canvas renderer
@@ -135,6 +138,11 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       unregisterTerminal(terminalId)
       unregisterTerminalInstance(terminalId)
       ro.disconnect()
+      // Explicitly dispose WebGL addon to prevent context leak
+      if (webglAddonRef.current) {
+        webglAddonRef.current.dispose()
+        webglAddonRef.current = null
+      }
       terminal.dispose()
     }
   }, [terminalId])

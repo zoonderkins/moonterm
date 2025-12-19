@@ -7,6 +7,9 @@ import { STORAGE_SCHEMA } from '../lib/version'
 // Activity threshold: terminal is "active" if last activity was within this time
 export const ACTIVITY_THRESHOLD_MS = 10_000 // 10 seconds
 
+// Maximum scrollback buffer entries to prevent unbounded memory growth
+const MAX_SCROLLBACK_ENTRIES = 100
+
 // Saved terminal data with scrollback content
 interface SavedTerminal {
   id: string
@@ -357,9 +360,15 @@ class WorkspaceStore {
   appendScrollback(id: string, data: string): void {
     this.state = {
       ...this.state,
-      terminals: this.state.terminals.map(t =>
-        t.id === id ? { ...t, scrollbackBuffer: [...t.scrollbackBuffer, data] } : t
-      )
+      terminals: this.state.terminals.map(t => {
+        if (t.id !== id) return t
+        // Limit buffer size to prevent unbounded memory growth
+        const newBuffer = [...t.scrollbackBuffer, data]
+        const limitedBuffer = newBuffer.length > MAX_SCROLLBACK_ENTRIES
+          ? newBuffer.slice(-MAX_SCROLLBACK_ENTRIES)
+          : newBuffer
+        return { ...t, scrollbackBuffer: limitedBuffer }
+      })
     }
     // Don't notify for scrollback updates to avoid re-renders
   }
@@ -509,59 +518,70 @@ class WorkspaceStore {
 
   // Persistence
   async save(): Promise<void> {
-    // Get scrollback content from terminal registry
-    const terminalContents = getAllTerminalContents()
+    try {
+      // Get scrollback content from terminal registry
+      const terminalContents = getAllTerminalContents()
 
-    // Save terminals with their scrollback content (excluding split panes)
-    const savedTerminals: SavedTerminal[] = this.state.terminals
-      .filter(t => !t.splitFromId)  // Don't save split panes
-      .map(t => ({
-        id: t.id,
-        workspaceId: t.workspaceId,
-        title: t.title,
-        cwd: t.cwd,
-        scrollbackContent: terminalContents.get(t.id)
-      }))
-
-    const data = JSON.stringify({
-      schemaVersion: STORAGE_SCHEMA.WORKSPACE,
-      savedAt: new Date().toISOString(),
-      workspaces: this.state.workspaces,
-      activeWorkspaceId: this.state.activeWorkspaceId,
-      terminals: savedTerminals,
-      focusedTerminalId: this.state.focusedTerminalId
-    })
-    await tauriAPI.workspace.save(data)
-  }
-
-  async load(): Promise<void> {
-    const data = await tauriAPI.workspace.load()
-    if (data) {
-      try {
-        const parsed = JSON.parse(data)
-
-        // Restore terminals from saved data
-        const savedTerminals: SavedTerminal[] = parsed.terminals || []
-        const terminals: TerminalInstance[] = savedTerminals.map(t => ({
+      // Save terminals with their scrollback content (excluding split panes)
+      const savedTerminals: SavedTerminal[] = this.state.terminals
+        .filter(t => !t.splitFromId)  // Don't save split panes
+        .map(t => ({
           id: t.id,
           workspaceId: t.workspaceId,
           title: t.title,
           cwd: t.cwd,
-          scrollbackBuffer: [],  // Will be restored when TerminalPanel mounts
-          savedScrollbackContent: t.scrollbackContent  // Store for restoration
+          scrollbackContent: terminalContents.get(t.id)
         }))
 
-        this.state = {
-          ...this.state,
-          workspaces: parsed.workspaces || [],
-          activeWorkspaceId: parsed.activeWorkspaceId || null,
-          terminals,
-          focusedTerminalId: parsed.focusedTerminalId || null
+      const data = JSON.stringify({
+        schemaVersion: STORAGE_SCHEMA.WORKSPACE,
+        savedAt: new Date().toISOString(),
+        workspaces: this.state.workspaces,
+        activeWorkspaceId: this.state.activeWorkspaceId,
+        terminals: savedTerminals,
+        focusedTerminalId: this.state.focusedTerminalId
+      })
+      await tauriAPI.workspace.save(data)
+    } catch (error) {
+      console.error('[WorkspaceStore] Failed to save workspace:', error)
+      // Don't throw - saving is a background operation
+      // TODO: Consider showing a non-blocking notification to the user
+    }
+  }
+
+  async load(): Promise<void> {
+    try {
+      const data = await tauriAPI.workspace.load()
+      if (data) {
+        try {
+          const parsed = JSON.parse(data)
+
+          // Restore terminals from saved data
+          const savedTerminals: SavedTerminal[] = parsed.terminals || []
+          const terminals: TerminalInstance[] = savedTerminals.map(t => ({
+            id: t.id,
+            workspaceId: t.workspaceId,
+            title: t.title,
+            cwd: t.cwd,
+            scrollbackBuffer: [],  // Will be restored when TerminalPanel mounts
+            savedScrollbackContent: t.scrollbackContent  // Store for restoration
+          }))
+
+          this.state = {
+            ...this.state,
+            workspaces: parsed.workspaces || [],
+            activeWorkspaceId: parsed.activeWorkspaceId || null,
+            terminals,
+            focusedTerminalId: parsed.focusedTerminalId || null
+          }
+          this.notify()
+        } catch (e) {
+          console.error('[WorkspaceStore] Failed to parse workspace data:', e)
         }
-        this.notify()
-      } catch (e) {
-        console.error('Failed to parse workspace data:', e)
       }
+    } catch (error) {
+      console.error('[WorkspaceStore] Failed to load workspace:', error)
+      // Continue with empty state - user can still use the app
     }
   }
 }

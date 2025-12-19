@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from 'react'
+import { useEffect, useCallback, useState, useRef, memo } from 'react'
 import type { Workspace, TerminalInstance, SplitDirection, FocusedPane } from '../types'
 import { workspaceStore } from '../stores/workspace-store'
 import { TerminalPanel } from './TerminalPanel'
@@ -16,7 +16,8 @@ interface WorkspaceViewProps {
   onUnlockRequest?: (workspaceId: string) => void
 }
 
-export function WorkspaceView({
+// Memoized component to prevent unnecessary re-renders when other workspaces change
+export const WorkspaceView = memo(function WorkspaceView({
   workspace,
   terminals,
   focusedTerminalId,
@@ -211,4 +212,4 @@ export function WorkspaceView({
       ))}
     </div>
   )
-}
+})

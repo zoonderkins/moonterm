@@ -133,8 +133,9 @@ export default function App() {
         workspaceStore.lockWorkspace(workspaceId, encryptedData, workspace.passwordHint)
         workspaceStore.save()
         return
-      } catch {
+      } catch (error) {
         // If re-encryption fails, fall through to show password dialog
+        console.error('[App] Re-encryption failed:', error)
         workspaceStore.clearSessionPassword(workspaceId)
       }
     }
@@ -208,8 +209,13 @@ export default function App() {
         workspaceStore.save()
         setPasswordDialog(null)
       }
-    } catch {
-      setPasswordError('Incorrect password')
+    } catch (error) {
+      console.error('[App] Password operation failed:', error)
+      // Distinguish between decryption failure and other errors
+      const errorMsg = error instanceof Error && error.message.toLowerCase().includes('decrypt')
+        ? 'Incorrect password'
+        : 'Operation failed. Please try again.'
+      setPasswordError(errorMsg)
     }
   }, [passwordDialog, state.workspaces])
 
@@ -232,11 +238,20 @@ export default function App() {
 
   const activeWorkspace = state.workspaces.find(w => w.id === state.activeWorkspaceId)
 
+  // Memoize terminals for each workspace to prevent recalculation on every render
+  const workspaceTerminalsMap = useMemo(() => {
+    const map = new Map<string, typeof state.terminals>()
+    state.workspaces.forEach(ws => {
+      map.set(ws.id, workspaceStore.getWorkspaceTerminals(ws.id))
+    })
+    return map
+  }, [state.workspaces, state.terminals])
+
   // Get terminals for active workspace (memoized for keyboard shortcuts)
   const activeWorkspaceTerminals = useMemo(() => {
     if (!activeWorkspace) return []
-    return workspaceStore.getWorkspaceTerminals(activeWorkspace.id)
-  }, [activeWorkspace, state.terminals])
+    return workspaceTerminalsMap.get(activeWorkspace.id) || []
+  }, [activeWorkspace, workspaceTerminalsMap])
 
   // Add new terminal to current workspace
   const handleAddTerminal = useCallback(() => {
@@ -426,7 +441,7 @@ export default function App() {
             >
               <WorkspaceView
                 workspace={workspace}
-                terminals={workspaceStore.getWorkspaceTerminals(workspace.id)}
+                terminals={workspaceTerminalsMap.get(workspace.id) || []}
                 focusedTerminalId={state.focusedTerminalId}
                 splitTerminalId={state.splitTerminalId}
                 splitDirection={state.splitDirection}

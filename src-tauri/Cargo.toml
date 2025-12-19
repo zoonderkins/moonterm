@@ -1,6 +1,6 @@
 [package]
 name = "moonterm"
-version = "1.0.7"
+version = "1.0.8"
 description = "A terminal aggregator with multi-workspace support"
 authors = ["zoonderkins"]
 edition = "2021"
