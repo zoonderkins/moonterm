@@ -160,11 +160,21 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
     // Listen for font settings changes
     const handleFontChange = (e: Event) => {
       const settings = (e as CustomEvent<FontSettings>).detail
+      console.log('[Terminal] Font settings changed:', settings)
       terminal.options.fontFamily = settings.fontFamily
       terminal.options.fontSize = settings.fontSize
       // Refresh terminal to apply new font
       terminal.refresh(0, terminal.rows - 1)
       fitAddon.fit()
+      // For WebGL, need to trigger a re-render
+      if (webglAddonRef.current) {
+        try {
+          webglAddonRef.current.clearTextureAtlas()
+        } catch {
+          // Ignore if method not available
+        }
+      }
+      console.log('[Terminal] Font applied:', terminal.options.fontFamily)
     }
     window.addEventListener('font-settings-changed', handleFontChange)
 

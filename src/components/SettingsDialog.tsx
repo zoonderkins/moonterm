@@ -254,9 +254,10 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
               </div>
             </div>
           </div>
-          <p className="settings-hint">
-            Install Nerd Fonts for icon support: <code>brew install --cask font-meslo-lg-nerd-font</code>
-          </p>
+          <div className="settings-hint-block">
+            <span>Install Nerd Fonts:</span>
+            <code>brew install --cask font-meslo-lg-nerd-font</code>
+          </div>
         </div>
 
         {/* Config Path */}

@@ -1,6 +1,6 @@
 {
   "name": "moonterm",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "A terminal aggregator with multi-workspace support",
   "type": "module",
   "scripts": {
