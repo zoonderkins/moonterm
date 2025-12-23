@@ -26,6 +26,13 @@ export interface TauriAPI {
     decrypt: (encryptedData: string, password: string) => Promise<string>
     getHint: (encryptedData: string) => Promise<string | null>
   }
+  env: {
+    readDotenv: (dirPath: string) => Promise<Record<string, string>>
+    readEnvrc: (dirPath: string) => Promise<Record<string, string>>
+    hasDotenv: (dirPath: string) => Promise<boolean>
+    hasEnvrc: (dirPath: string) => Promise<boolean>
+    getFilesInfo: (dirPath: string) => Promise<[boolean, boolean, Record<string, string>, Record<string, string>]>
+  }
 }
 
 export const tauriAPI: TauriAPI = {
@@ -88,6 +95,23 @@ export const tauriAPI: TauriAPI = {
 
     getHint: (encryptedData: string) =>
       invoke<string | null>('crypto_get_hint', { encryptedData }),
+  },
+
+  env: {
+    readDotenv: (dirPath: string) =>
+      invoke<Record<string, string>>('env_read_dotenv', { dirPath }),
+
+    readEnvrc: (dirPath: string) =>
+      invoke<Record<string, string>>('env_read_envrc', { dirPath }),
+
+    hasDotenv: (dirPath: string) =>
+      invoke<boolean>('env_has_dotenv', { dirPath }),
+
+    hasEnvrc: (dirPath: string) =>
+      invoke<boolean>('env_has_envrc', { dirPath }),
+
+    getFilesInfo: (dirPath: string) =>
+      invoke<[boolean, boolean, Record<string, string>, Record<string, string>]>('env_get_files_info', { dirPath }),
   },
 }
 

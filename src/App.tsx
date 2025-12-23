@@ -6,10 +6,16 @@ import { WorkspaceView } from './components/WorkspaceView'
 import { SettingsDialog, applyTheme, getSavedTheme, type ThemeKey } from './components/SettingsDialog'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
 import { PasswordDialog } from './components/PasswordDialog'
+import { ResizeHandle } from './components/ResizeHandle'
 import { initPtyListeners } from './lib/pty-listeners'
 import type { AppState } from './types'
 import { tauriAPI } from './lib/tauri-bridge'
 import { getAllTerminalContents } from './lib/terminal-registry'
+
+// Sidebar width constraints
+const SIDEBAR_MIN_WIDTH = 160
+const SIDEBAR_MAX_WIDTH = 400
+const SIDEBAR_DEFAULT_WIDTH = 220
 
 // Initialize PTY listeners once at app startup
 initPtyListeners()
@@ -20,6 +26,11 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>('default')
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)
+  // Sidebar width state
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem('sidebarWidth')
+    return saved ? parseInt(saved, 10) : SIDEBAR_DEFAULT_WIDTH
+  })
   // Password dialog state
   const [passwordDialog, setPasswordDialog] = useState<{
     mode: 'set' | 'unlock' | 'confirm-delete'
@@ -28,6 +39,20 @@ export default function App() {
     hint?: string
   } | null>(null)
   const [passwordError, setPasswordError] = useState('')
+
+  // Sidebar resize handlers
+  const handleSidebarResize = useCallback((delta: number) => {
+    setSidebarWidth(prev => {
+      const newWidth = Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, prev + delta))
+      localStorage.setItem('sidebarWidth', String(newWidth))
+      return newWidth
+    })
+  }, [])
+
+  const handleSidebarResetWidth = useCallback(() => {
+    setSidebarWidth(SIDEBAR_DEFAULT_WIDTH)
+    localStorage.setItem('sidebarWidth', String(SIDEBAR_DEFAULT_WIDTH))
+  }, [])
 
   // Apply saved theme on startup
   useEffect(() => {
@@ -416,20 +441,27 @@ export default function App() {
 
   return (
     <div className="app">
-      <Sidebar
-        workspaces={state.workspaces}
-        activeWorkspaceId={state.activeWorkspaceId}
-        onSelectWorkspace={(id) => workspaceStore.setActiveWorkspace(id)}
-        onAddWorkspace={handleAddWorkspace}
-        onRemoveWorkspace={(id) => {
-          workspaceStore.removeWorkspace(id)
-          workspaceStore.save()
-        }}
-        onSettingsClick={() => setShowSettings(true)}
-        onLockWorkspace={handleLockWorkspace}
-        onUnlockWorkspace={handleUnlockWorkspace}
-        showShortcutHints={showShortcutHints}
-      />
+      <div className="sidebar-container" style={{ width: sidebarWidth }}>
+        <Sidebar
+          workspaces={state.workspaces}
+          activeWorkspaceId={state.activeWorkspaceId}
+          onSelectWorkspace={(id) => workspaceStore.setActiveWorkspace(id)}
+          onAddWorkspace={handleAddWorkspace}
+          onRemoveWorkspace={(id) => {
+            workspaceStore.removeWorkspace(id)
+            workspaceStore.save()
+          }}
+          onSettingsClick={() => setShowSettings(true)}
+          onLockWorkspace={handleLockWorkspace}
+          onUnlockWorkspace={handleUnlockWorkspace}
+          showShortcutHints={showShortcutHints}
+        />
+        <ResizeHandle
+          direction="horizontal"
+          onResize={handleSidebarResize}
+          onDoubleClick={handleSidebarResetWidth}
+        />
+      </div>
       <main className="main-content">
         {state.workspaces.length > 0 ? (
           // Render ALL workspaces to keep terminals mounted and preserve content

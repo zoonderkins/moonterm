@@ -1,6 +1,8 @@
 use crate::crypto;
+use crate::env;
 use crate::pty::{CreatePtyOptions, PtyManager};
 use crate::workspace;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::State;
 
@@ -117,4 +119,63 @@ pub async fn crypto_decrypt(encrypted_data: String, password: String) -> Result<
 pub async fn crypto_get_hint(encrypted_data: String) -> Result<Option<String>, String> {
     let envelope = crypto::string_to_envelope(&encrypted_data)?;
     Ok(envelope.hint)
+}
+
+// ============================================================================
+// Environment Variable Commands
+// ============================================================================
+
+/// Read .env file from a directory
+#[tauri::command]
+pub async fn env_read_dotenv(dir_path: String) -> Result<HashMap<String, String>, String> {
+    let result = env::read_env_file(&dir_path);
+    if !result.errors.is_empty() {
+        eprintln!("Errors reading .env: {:?}", result.errors);
+    }
+    Ok(result.env_vars)
+}
+
+/// Read .envrc file from a directory (direnv format)
+#[tauri::command]
+pub async fn env_read_envrc(dir_path: String) -> Result<HashMap<String, String>, String> {
+    let result = env::read_envrc_file(&dir_path);
+    if !result.errors.is_empty() {
+        eprintln!("Errors reading .envrc: {:?}", result.errors);
+    }
+    Ok(result.env_vars)
+}
+
+/// Check if .env file exists in directory
+#[tauri::command]
+pub async fn env_has_dotenv(dir_path: String) -> Result<bool, String> {
+    Ok(env::has_env_file(&dir_path))
+}
+
+/// Check if .envrc file exists in directory
+#[tauri::command]
+pub async fn env_has_envrc(dir_path: String) -> Result<bool, String> {
+    Ok(env::has_envrc_file(&dir_path))
+}
+
+/// Get all env files info for a directory
+#[tauri::command]
+pub async fn env_get_files_info(
+    dir_path: String,
+) -> Result<(bool, bool, HashMap<String, String>, HashMap<String, String>), String> {
+    let has_env = env::has_env_file(&dir_path);
+    let has_envrc = env::has_envrc_file(&dir_path);
+
+    let env_vars = if has_env {
+        env::read_env_file(&dir_path).env_vars
+    } else {
+        HashMap::new()
+    };
+
+    let envrc_vars = if has_envrc {
+        env::read_envrc_file(&dir_path).env_vars
+    } else {
+        HashMap::new()
+    };
+
+    Ok((has_env, has_envrc, env_vars, envrc_vars))
 }

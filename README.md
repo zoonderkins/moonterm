@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.8-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.9-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Tauri](https://img.shields.io/badge/tauri-2.x-FFC131.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -17,10 +17,13 @@
 
 - **Multi-Workspace Support** - Organize terminals by project folders
 - **Workspace Encryption** - Lock workspaces with AES-256-GCM encryption (password protected)
+- **Environment Variables** - Per-workspace env vars with `.env`/`.envrc` auto-loading
+- **Tab ENV Button** - View environment variables per terminal (click ENV on any tab)
 - **Activity Indicators** - Workspace turns green when terminals are running, orange when idle
 - **Browser-Style Tabs** - Terminal tabs at top with hover preview
 - **Terminal Split** - Split terminals horizontally (Cmd+D) or vertically (Cmd+Shift+D)
 - **Split Pane Focus** - Click to switch focus between split panes (blue border indicates active)
+- **Resizable Sidebar** - Drag edge to resize (160-400px), double-click to reset
 - **Collapsible Sidebar** - Minimize to show workspace numbers only
 - **Keyboard Shortcuts** - Quick switching with Ctrl+1-9, Cmd+T, Cmd+D
 - **Theme Support** - 5 built-in color themes (Default Dark, Purple Night, Pink Blossom, Pure Black, Colorblind Safe)
@@ -249,6 +252,8 @@ moonterm/
 ├── src/                      # React frontend
 │   ├── components/           # UI components
 │   │   ├── PasswordDialog    # Workspace encryption dialog
+│   │   ├── EnvPopover        # Environment variables viewer
+│   │   ├── ResizeHandle      # Drag-to-resize component
 │   │   └── ActivityIndicator # Terminal activity status
 │   ├── lib/                  # Utilities (tauri-bridge, pty-listeners)
 │   ├── stores/               # State management
@@ -258,10 +263,11 @@ moonterm/
 │   │   ├── lib.rs            # App entry
 │   │   ├── commands.rs       # IPC handlers
 │   │   ├── crypto.rs         # AES-256-GCM encryption
+│   │   ├── env.rs            # .env/.envrc parsing
 │   │   ├── pty.rs            # PTY management
 │   │   └── workspace.rs      # Persistence
 │   └── tauri.conf.json
-└── docs/                     # Documentation
+└── docs/                     # Documentation & Glossary
 ```
 
 ### Tech Stack
@@ -281,6 +287,7 @@ moonterm/
 - [Architecture](docs/ARCHITECTURE.md) - System design and component structure
 - [Flow](docs/FLOW.md) - Application workflows and data flow
 - [Development](docs/DEVELOPMENT.md) - Build, debug, and contribute
+- [Glossary](docs/GLOSSARY.md) - Technical terms explained (PTY, IPC, CRLF, etc.)
 
 ---
 
@@ -350,6 +357,42 @@ Lock sensitive workspaces with password protection. Terminal content is encrypte
 
 ---
 
+## Environment Variables
+
+Each workspace runs in a **sandboxed environment** with isolated environment variables. This ensures project-specific variables don't leak between workspaces.
+
+### Sources (Priority Order)
+
+| Priority | Source | Description |
+|----------|--------|-------------|
+| 1 (Highest) | Workspace Settings | Custom env vars set in workspace configuration |
+| 2 | `.envrc` (direnv) | Shell commands in workspace folder's `.envrc` file |
+| 3 | `.env` file | Key-value pairs in workspace folder's `.env` file |
+| 4 (Lowest) | System | Inherited from Moonterm process |
+
+### Viewing Environment Variables
+
+Click the **ENV** button on any terminal tab to view all environment variables for that terminal:
+- **Filter**: Search by key name
+- **Show Secrets**: Toggle to reveal masked values (keys containing `SECRET`, `KEY`, `TOKEN`, `PASSWORD`, `CREDENTIALS`)
+- **Grouped by Source**: See where each variable comes from
+
+### Auto-Loading
+
+When a workspace has a `.env` or `.envrc` file in its folder:
+- Variables are automatically parsed and loaded
+- `.envrc` supports shell syntax (`export KEY=value`)
+- `.env` supports standard dotenv format (`KEY=value`)
+
+### Sandboxed Isolation
+
+- Each workspace maintains its own environment scope
+- Terminals within a workspace share the same env vars
+- Switching workspaces switches the entire environment context
+- Encrypted workspaces also encrypt their environment variables
+
+---
+
 ## Technical Notes
 
 ### Unicode 11 Support
@@ -369,6 +412,21 @@ For applications using TUI frameworks (like **Claude Code CLI** which uses [Ink]
 - **smoothScrollDuration: 0** for instant updates during rapid redraws
 
 These optimizations help reduce visual glitches like extra blank lines during fast terminal updates.
+
+### PTY Environment Variables
+
+Moonterm sets special environment variables for better compatibility with CLI tools:
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `TERM` | `xterm-256color` | 256-color terminal support |
+| `COLORTERM` | `truecolor` | 24-bit color (16.7M colors) |
+| `TERM_PROGRAM` | `moonterm` | Identifies the terminal emulator |
+| `TERM_PROGRAM_VERSION` | `x.y.z` | Current Moonterm version |
+| `FORCE_COLOR` | `1` | Enables color output in tools like Jest, Chalk |
+| `CI` | `""` (empty) | Signals non-CI environment for interactive tools |
+
+These variables help tools like Claude Code, npm, and other CLI applications detect capabilities and display rich output.
 
 ### Large Paste Chunking
 

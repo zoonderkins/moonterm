@@ -62,6 +62,9 @@ fn find_utf8_boundary(bytes: &[u8]) -> usize {
 pub struct CreatePtyOptions {
     pub id: String,
     pub cwd: String,
+    /// Custom environment variables to merge (workspace + .env + .envrc)
+    #[serde(default)]
+    pub custom_env: Option<HashMap<String, String>>,
 }
 
 struct PtyInstance {
@@ -135,6 +138,18 @@ impl PtyManager {
         env_vars.insert("TERM".to_string(), "xterm-256color".to_string());
         env_vars.insert("COLORTERM".to_string(), "truecolor".to_string());
 
+        // Terminal program identification - helps Claude Code and other TUI apps
+        // detect they're running in a proper terminal with full capabilities
+        env_vars.insert("TERM_PROGRAM".to_string(), "moonterm".to_string());
+        env_vars.insert("TERM_PROGRAM_VERSION".to_string(), env!("CARGO_PKG_VERSION").to_string());
+
+        // Force color output for CLI tools that check for TTY
+        env_vars.insert("FORCE_COLOR".to_string(), "1".to_string());
+
+        // Explicitly set CI to empty string to prevent tools from entering CI mode
+        // Claude Code and many CLI tools check this to decide output format
+        env_vars.insert("CI".to_string(), "".to_string());
+
         // Add Homebrew paths to PATH (not inherited when launched from Finder)
         #[cfg(target_os = "macos")]
         {
@@ -165,7 +180,15 @@ impl PtyManager {
     /// Create a new PTY instance
     pub fn create(&self, options: CreatePtyOptions) -> Result<bool, String> {
         let (shell, args) = Self::get_default_shell();
-        let env_vars = Self::create_utf8_env();
+        let mut env_vars = Self::create_utf8_env();
+
+        // Merge custom environment variables if provided
+        // Custom vars override system vars (workspace + .env + .envrc)
+        if let Some(custom_env) = &options.custom_env {
+            for (key, value) in custom_env {
+                env_vars.insert(key.clone(), value.clone());
+            }
+        }
 
         // Use portable-pty only - no fallback to avoid duplicate output issues
         self.create_with_portable_pty(&options, &shell, &args, &env_vars)?;
@@ -548,7 +571,7 @@ impl PtyManager {
 
         self.kill(id.clone())?;
 
-        self.create(CreatePtyOptions { id, cwd })
+        self.create(CreatePtyOptions { id, cwd, custom_env: None })
     }
 
     /// Get current working directory

@@ -7,6 +7,19 @@ export interface Workspace {
   isLocked?: boolean;           // Whether workspace is currently locked
   encryptedData?: string;       // Encrypted workspace data (terminals, scrollback)
   passwordHint?: string;        // Optional hint for password recovery
+  // Environment variable support
+  envVars?: Record<string, string>;           // Plain env vars (non-sensitive)
+  encryptedEnvVars?: string;                  // Encrypted env vars (uses workspace password)
+  autoLoadEnv?: boolean;                      // Auto-load .env from folderPath
+  autoLoadDirenv?: boolean;                   // Auto-load .envrc from folderPath
+}
+
+// Environment variable entry for UI display
+export interface EnvVarEntry {
+  key: string;
+  value: string;
+  source: 'system' | 'workspace' | 'env_file' | 'direnv';
+  isSecret?: boolean;           // If true, value is encrypted/masked
 }
 
 export interface TerminalInstance {
@@ -44,6 +57,15 @@ export interface AppState {
 export interface CreatePtyOptions {
   id: string;
   cwd: string;
+  customEnv?: Record<string, string>;  // Custom env vars to merge
+}
+
+// Result from reading env files
+export interface EnvFilesInfo {
+  hasEnv: boolean;
+  hasEnvrc: boolean;
+  envVars: Record<string, string>;
+  envrcVars: Record<string, string>;
 }
 
 export interface PtyOutput {

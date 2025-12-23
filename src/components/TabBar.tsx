@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { TerminalInstance } from '../types'
 import { workspaceStore } from '../stores/workspace-store'
+import { EnvPopover } from './EnvPopover'
 
 interface TabBarProps {
   terminals: TerminalInstance[]
@@ -18,9 +19,10 @@ interface TabProps {
   onClick: () => void
   onClose: () => void
   showShortcutHint?: boolean
+  onShowEnv: (e: React.MouseEvent) => void
 }
 
-function Tab({ terminal, isActive, index, onClick, onClose, showShortcutHint }: TabProps) {
+function Tab({ terminal, isActive, index, onClick, onClose, showShortcutHint, onShowEnv }: TabProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
   const [showTooltip, setShowTooltip] = useState(false)
@@ -99,6 +101,17 @@ function Tab({ terminal, isActive, index, onClick, onClose, showShortcutHint }: 
       )}
 
       <button
+        className="tab-env-btn"
+        onClick={(e) => {
+          e.stopPropagation()
+          onShowEnv(e)
+        }}
+        title="Environment Variables"
+      >
+        ENV
+      </button>
+
+      <button
         className="tab-close-btn"
         onClick={(e) => {
           e.stopPropagation()
@@ -126,6 +139,21 @@ export function TabBar({
   onAddTerminal,
   showShortcutHints = false
 }: TabBarProps) {
+  const [envPopover, setEnvPopover] = useState<{
+    terminalId: string
+    workspaceId: string
+    position: { x: number; y: number }
+  } | null>(null)
+
+  const handleShowEnv = (terminal: TerminalInstance, e: React.MouseEvent) => {
+    const rect = (e.target as HTMLElement).getBoundingClientRect()
+    setEnvPopover({
+      terminalId: terminal.id,
+      workspaceId: terminal.workspaceId,
+      position: { x: rect.left, y: rect.bottom + 5 },
+    })
+  }
+
   return (
     <div className="tab-bar">
       <div className="tabs-container">
@@ -138,6 +166,7 @@ export function TabBar({
             onClick={() => onFocus(terminal.id)}
             onClose={() => onClose(terminal.id)}
             showShortcutHint={showShortcutHints}
+            onShowEnv={(e) => handleShowEnv(terminal, e)}
           />
         ))}
         <button
@@ -150,6 +179,15 @@ export function TabBar({
       </div>
       {showShortcutHints && (
         <span className="tab-hint-label">Ctrl+Shift+#</span>
+      )}
+
+      {envPopover && (
+        <EnvPopover
+          workspaceId={envPopover.workspaceId}
+          terminalId={envPopover.terminalId}
+          position={envPopover.position}
+          onClose={() => setEnvPopover(null)}
+        />
       )}
     </div>
   )

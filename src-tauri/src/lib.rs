@@ -1,5 +1,6 @@
 mod commands;
 mod crypto;
+mod env;
 mod pty;
 mod workspace;
 
@@ -41,6 +42,12 @@ pub fn run() {
             commands::crypto_encrypt,
             commands::crypto_decrypt,
             commands::crypto_get_hint,
+            // Environment variable commands
+            commands::env_read_dotenv,
+            commands::env_read_envrc,
+            commands::env_has_dotenv,
+            commands::env_has_envrc,
+            commands::env_get_files_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
