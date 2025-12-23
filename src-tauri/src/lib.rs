@@ -6,7 +6,7 @@ mod workspace;
 
 use pty::PtyManager;
 use std::sync::Arc;
-use tauri::menu::{Menu, MenuItem, Submenu};
+use tauri::menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,12 +19,45 @@ pub fn run() {
             let pty_manager = Arc::new(PtyManager::new(app_handle.clone()));
             app.manage(pty_manager);
 
+            // Create app menu (Moonterm) with About and Quit
+            let about = PredefinedMenuItem::about(app, Some("About Moonterm"), Some(AboutMetadata {
+                name: Some("Moonterm".to_string()),
+                version: Some(env!("CARGO_PKG_VERSION").to_string()),
+                copyright: Some("© 2025 Moonterm".to_string()),
+                ..Default::default()
+            }))?;
+            let separator = PredefinedMenuItem::separator(app)?;
+            let quit = PredefinedMenuItem::quit(app, Some("Quit Moonterm"))?;
+            let app_menu = Submenu::with_items(app, "Moonterm", true, &[&about, &separator, &quit])?;
+
+            // Create Edit menu with standard items
+            let undo = PredefinedMenuItem::undo(app, None)?;
+            let redo = PredefinedMenuItem::redo(app, None)?;
+            let cut = PredefinedMenuItem::cut(app, None)?;
+            let copy = PredefinedMenuItem::copy(app, None)?;
+            let paste = PredefinedMenuItem::paste(app, None)?;
+            let select_all = PredefinedMenuItem::select_all(app, None)?;
+            let edit_sep = PredefinedMenuItem::separator(app)?;
+            let edit_menu = Submenu::with_items(app, "Edit", true, &[
+                &undo, &redo, &edit_sep, &cut, &copy, &paste, &select_all
+            ])?;
+
+            // Create Window menu
+            let minimize = PredefinedMenuItem::minimize(app, None)?;
+            let maximize = PredefinedMenuItem::maximize(app, None)?;
+            let close = PredefinedMenuItem::close_window(app, None)?;
+            let fullscreen = PredefinedMenuItem::fullscreen(app, None)?;
+            let window_sep = PredefinedMenuItem::separator(app)?;
+            let window_menu = Submenu::with_items(app, "Window", true, &[
+                &minimize, &maximize, &fullscreen, &window_sep, &close
+            ])?;
+
             // Create Help menu with Quick Start item
             let quick_start = MenuItem::with_id(app, "quick_start", "Quick Start", true, None::<&str>)?;
             let help_menu = Submenu::with_items(app, "Help", true, &[&quick_start])?;
 
-            // Get the default menu and append our Help menu
-            let menu = Menu::with_items(app, &[&help_menu])?;
+            // Build full menu
+            let menu = Menu::with_items(app, &[&app_menu, &edit_menu, &window_menu, &help_menu])?;
             app.set_menu(menu)?;
 
             // DevTools can be opened via right-click context menu -> Inspect

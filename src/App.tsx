@@ -18,6 +18,7 @@ import { getAllTerminalContents } from './lib/terminal-registry'
 const SIDEBAR_MIN_WIDTH = 160
 const SIDEBAR_MAX_WIDTH = 400
 const SIDEBAR_DEFAULT_WIDTH = 220
+const SIDEBAR_COLLAPSED_WIDTH = 48
 
 // Initialize PTY listeners once at app startup
 initPtyListeners()
@@ -35,6 +36,11 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebarWidth')
     return saved ? parseInt(saved, 10) : SIDEBAR_DEFAULT_WIDTH
+  })
+  // Sidebar collapsed state (lifted from Sidebar component)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed')
+    return saved === 'true'
   })
   // Password dialog state
   const [passwordDialog, setPasswordDialog] = useState<{
@@ -57,6 +63,14 @@ export default function App() {
   const handleSidebarResetWidth = useCallback(() => {
     setSidebarWidth(SIDEBAR_DEFAULT_WIDTH)
     localStorage.setItem('sidebarWidth', String(SIDEBAR_DEFAULT_WIDTH))
+  }, [])
+
+  const handleSidebarToggleCollapse = useCallback(() => {
+    setIsSidebarCollapsed(prev => {
+      const newState = !prev
+      localStorage.setItem('sidebarCollapsed', String(newState))
+      return newState
+    })
   }, [])
 
   // Apply saved theme on startup
@@ -461,7 +475,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <div className="sidebar-container" style={{ width: sidebarWidth }}>
+      <div className="sidebar-container" style={{ width: isSidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth }}>
         <Sidebar
           workspaces={state.workspaces}
           activeWorkspaceId={state.activeWorkspaceId}
@@ -475,6 +489,8 @@ export default function App() {
           onLockWorkspace={handleLockWorkspace}
           onUnlockWorkspace={handleUnlockWorkspace}
           showShortcutHints={showShortcutHints}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleSidebarToggleCollapse}
         />
         <ResizeHandle
           direction="horizontal"

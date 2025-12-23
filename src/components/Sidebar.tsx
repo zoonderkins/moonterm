@@ -13,6 +13,8 @@ interface SidebarProps {
   onLockWorkspace: (id: string) => void
   onUnlockWorkspace: (id: string) => void
   showShortcutHints?: boolean
+  isCollapsed: boolean
+  onToggleCollapse: () => void
 }
 
 export function Sidebar({
@@ -24,14 +26,12 @@ export function Sidebar({
   onSettingsClick,
   onLockWorkspace,
   onUnlockWorkspace,
-  showShortcutHints = false
+  showShortcutHints = false,
+  isCollapsed,
+  onToggleCollapse
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    const saved = localStorage.getItem('sidebarCollapsed')
-    return saved === 'true'
-  })
   const [activeWorkspaces, setActiveWorkspaces] = useState<Set<string>>(new Set())
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -64,12 +64,6 @@ export function Sidebar({
     }
   }, [workspaces])
 
-  const handleToggleCollapse = () => {
-    const newState = !isCollapsed
-    setIsCollapsed(newState)
-    localStorage.setItem('sidebarCollapsed', String(newState))
-  }
-
   const handleDoubleClick = (workspace: Workspace) => {
     if (isCollapsed) return // Can't edit in collapsed mode
     setEditValue(workspace.name)
@@ -97,7 +91,7 @@ export function Sidebar({
       <div className="sidebar-header">
         <button
           className="collapse-btn"
-          onClick={handleToggleCollapse}
+          onClick={onToggleCollapse}
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isCollapsed ? '☰' : '◀'}
