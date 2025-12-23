@@ -122,12 +122,12 @@ export function QuickStartDialog({ isOpen, onClose, isFirstLaunch = false }: Qui
           <section className="quick-start-section">
             <h3>Install Nerd Fonts (for icons)</h3>
             <p className="nerd-font-intro">For best experience with tools like LazyVim, Powerlevel10k:</p>
-            <div className="nerd-font-commands">
-              <code>brew install --cask font-meslo-lg-nerd-font</code>
-              <code>brew install --cask font-hack-nerd-font</code>
-              <code>brew install --cask font-fira-code-nerd-font</code>
-              <code>brew install --cask font-jetbrains-mono-nerd-font</code>
-            </div>
+            <ul className="nerd-font-list">
+              <li><code>brew install --cask font-meslo-lg-nerd-font</code></li>
+              <li><code>brew install --cask font-hack-nerd-font</code></li>
+              <li><code>brew install --cask font-fira-code-nerd-font</code></li>
+              <li><code>brew install --cask font-jetbrains-mono-nerd-font</code></li>
+            </ul>
             <p className="nerd-font-hint">After installing, go to Settings → Terminal Font to select your font.</p>
           </section>
 

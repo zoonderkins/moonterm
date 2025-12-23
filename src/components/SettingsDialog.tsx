@@ -4,12 +4,12 @@ import { workspaceStore } from '../stores/workspace-store'
 import { downloadSessionFile, importSession } from '../lib/session-manager'
 import { STORAGE_SCHEMA } from '../lib/version'
 
-// Font options for terminal
+// Font options for terminal (use Mono variants for proper terminal rendering)
 export const fontOptions = [
-  { value: '"MesloLGS NF", monospace', label: 'MesloLGS NF (Recommended)' },
-  { value: '"Hack Nerd Font", monospace', label: 'Hack Nerd Font' },
-  { value: '"FiraCode Nerd Font", monospace', label: 'FiraCode Nerd Font' },
-  { value: '"JetBrainsMono Nerd Font", monospace', label: 'JetBrains Mono Nerd Font' },
+  { value: '"MesloLGS NF", "MesloLGS Nerd Font Mono", monospace', label: 'MesloLGS NF (Recommended)' },
+  { value: '"Hack Nerd Font Mono", monospace', label: 'Hack Nerd Font Mono' },
+  { value: '"FiraCode Nerd Font Mono", monospace', label: 'FiraCode Nerd Font Mono' },
+  { value: '"JetBrainsMono Nerd Font Mono", monospace', label: 'JetBrains Mono Nerd Font' },
   { value: 'Menlo, Monaco, "Courier New", monospace', label: 'System Default' },
 ]
 
@@ -19,7 +19,7 @@ export interface FontSettings {
 }
 
 const DEFAULT_FONT_SETTINGS: FontSettings = {
-  fontFamily: '"MesloLGS NF", "FiraCode Nerd Font", "Hack Nerd Font", "JetBrainsMono Nerd Font", Menlo, Monaco, "Courier New", monospace',
+  fontFamily: '"MesloLGS NF", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", "FiraCode Nerd Font Mono", "JetBrainsMono Nerd Font Mono", Menlo, Monaco, "Courier New", monospace',
   fontSize: 14,
 }
 

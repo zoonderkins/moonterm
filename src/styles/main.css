@@ -1985,27 +1985,42 @@ body {
   margin-bottom: 8px;
 }
 
-.nerd-font-commands {
+.nerd-font-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 10px 12px;
+  gap: 6px;
 }
 
-.nerd-font-commands code {
+.nerd-font-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nerd-font-list li::before {
+  content: "•";
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+.nerd-font-list code {
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 11px;
   color: var(--text-primary);
+  background: var(--bg-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
   user-select: all;
 }
 
 .nerd-font-hint {
   color: var(--text-secondary);
   font-size: 11px;
-  margin-top: 8px;
+  margin-top: 10px;
   font-style: italic;
 }
 
