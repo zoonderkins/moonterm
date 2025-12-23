@@ -132,6 +132,8 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
             }
             workspaceStore.removeTerminal(terminalId)
           }
+          // Save immediately to persist the closed tab state
+          workspaceStore.save()
         }, 500)
       }
     )

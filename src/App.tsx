@@ -116,6 +116,8 @@ export default function App() {
 
   // Handle close confirmation
   const handleCloseConfirm = useCallback(async () => {
+    // Save workspace state before closing to ensure all changes are persisted
+    await workspaceStore.save()
     const appWindow = getCurrentWindow()
     await appWindow.destroy()
   }, [])
@@ -351,6 +353,8 @@ export default function App() {
 
     tauriAPI.pty.kill(focusedId)
     workspaceStore.removeTerminal(focusedId)
+    // Save immediately to persist the closed tab state
+    workspaceStore.save()
   }, [state.focusedTerminalId])
 
   // Keyboard shortcuts: Ctrl+1~9 for workspace, Cmd+1~9 for terminals, Cmd+T/W/D for tab operations

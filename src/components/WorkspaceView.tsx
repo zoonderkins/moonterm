@@ -114,6 +114,8 @@ export const WorkspaceView = memo(function WorkspaceView({
     }
     tauriAPI.pty.kill(id)
     workspaceStore.removeTerminal(id)
+    // Save immediately to persist the closed tab state
+    workspaceStore.save()
   }, [splitTerminal])
 
   const handleFocus = useCallback((id: string) => {
