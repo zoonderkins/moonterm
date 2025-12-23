@@ -52,12 +52,12 @@ export const themes = {
     name: 'Pure Black',
     colors: {
       '--bg-primary': '#000000',
-      '--bg-secondary': '#0a0a0a',
-      '--bg-tertiary': '#141414',
-      '--bg-hover': '#1e1e1e',
+      '--bg-secondary': '#121212',
+      '--bg-tertiary': '#1e1e1e',
+      '--bg-hover': '#2a2a2a',
       '--text-primary': '#ffffff',
-      '--text-secondary': '#808080',
-      '--border-color': '#333333',
+      '--text-secondary': '#a0a0a0',
+      '--border-color': '#3a3a3a',
       '--accent-color': '#ffffff',
       '--terminal-bg': '#000000',
     }
