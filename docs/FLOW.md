@@ -152,19 +152,97 @@ User selects theme in Settings
    │       └─► localStorage.setItem('theme', themeKey)
 ```
 
+## Terminal Search Flow
+
+```
+User presses Cmd+F
+   │
+   ├─► TerminalPanel keydown handler
+   │   └─► setShowSearch(true)
+   │
+   ├─► TerminalSearchBar renders
+   │   └─► Focus input, select text
+   │
+   └─► User types search query
+       └─► searchAddon.findNext(query, options)
+           └─► xterm highlights matches
+```
+
+## Context Menu Flow
+
+```
+User right-clicks terminal
+   │
+   ├─► onContextMenu handler
+   │   └─► setContextMenu({ x, y })
+   │
+   ├─► TerminalContextMenu renders
+   │   └─► Adjust position to viewport bounds
+   │
+   └─► User clicks action
+       ├─► Copy: terminal.getSelection() → clipboard
+       ├─► Paste: clipboard.readText() → pty.write()
+       ├─► Clear: terminal.clear()
+       ├─► Select All: terminal.selectAll()
+       └─► Find: setShowSearch(true)
+```
+
+## Tab Drag Reorder Flow
+
+```
+User drags tab
+   │
+   ├─► onDragStart
+   │   ├─► setDraggedIndex(index)
+   │   └─► e.dataTransfer.setData('text/plain', index)
+   │
+   ├─► onDragOver (another tab)
+   │   └─► e.preventDefault() (allow drop)
+   │
+   └─► onDrop
+       ├─► Get sourceIndex from draggedIndex
+       └─► workspaceStore.reorderTerminals(workspaceId, from, to)
+           └─► Splice array: remove from old, insert at new
+```
+
+## Tab Activity Indicator Flow
+
+```
+Terminal receives output while inactive
+   │
+   ├─► TerminalPanel onActivity callback
+   │   └─► handleTerminalActivity(terminalId)
+   │       └─► Add to activeTerminalIds Set
+   │
+   ├─► TabBar renders tab-activity-dot
+   │   └─► CSS animation: pulsing blue dot
+   │
+   └─► User clicks tab (becomes active)
+       └─► useEffect clears terminalId from activeTerminalIds
+```
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
+| Cmd+F | Search in terminal |
+| Cmd+T | New terminal tab |
+| Cmd+W | Close terminal tab |
+| Cmd+D | Split horizontal |
+| Cmd+Shift+D | Split vertical |
+| Cmd+1~9 | Switch terminal |
 | Ctrl+1~9 | Switch workspace |
-| Ctrl+Shift+1~9 | Switch terminal within workspace |
+| Right-click | Context menu |
+| Drag tab | Reorder tabs |
 
 ```
 keydown event
    │
-   ├─► Ctrl pressed → Show shortcut hints
+   ├─► Cmd pressed → Show shortcut hints
    │
-   ├─► Ctrl+N → workspaceStore.setActiveWorkspace(workspaces[N-1])
+   ├─► Cmd+F → Toggle terminal search bar
    │
-   └─► Ctrl+Shift+N → workspaceStore.setFocusedTerminal(terminals[N-1])
+   ├─► Cmd+N → Switch to terminal N
+   │
+   └─► Ctrl+N → workspaceStore.setActiveWorkspace(workspaces[N-1])
 ```

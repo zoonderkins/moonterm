@@ -1,6 +1,6 @@
 {
   "name": "moonterm",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "A terminal aggregator with multi-workspace support",
   "type": "module",
   "scripts": {
@@ -14,6 +14,7 @@
   "dependencies": {
     "@tauri-apps/api": "^2.9.1",
     "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-search": "^0.16.0",
     "@xterm/addon-serialize": "^0.13.0",
     "@xterm/addon-unicode11": "^0.8.0",
     "@xterm/addon-webgl": "^0.18.0",

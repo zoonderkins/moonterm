@@ -89,6 +89,17 @@ export function QuickStartDialog({ isOpen, onClose, isFirstLaunch = false }: Qui
                   <span>Close tab</span>
                 </div>
                 <div className="shortcut-row">
+                  <kbd>Cmd+F</kbd>
+                  <span>Search in terminal</span>
+                </div>
+                <div className="shortcut-row">
+                  <kbd>Right-click</kbd>
+                  <span>Context menu</span>
+                </div>
+              </div>
+              <div className="shortcut-group">
+                <h4>Navigation & Split</h4>
+                <div className="shortcut-row">
                   <kbd>Cmd+D</kbd>
                   <span>Split horizontal</span>
                 </div>
@@ -96,9 +107,6 @@ export function QuickStartDialog({ isOpen, onClose, isFirstLaunch = false }: Qui
                   <kbd>Cmd+Shift+D</kbd>
                   <span>Split vertical</span>
                 </div>
-              </div>
-              <div className="shortcut-group">
-                <h4>Navigation</h4>
                 <div className="shortcut-row">
                   <kbd>Cmd+1-9</kbd>
                   <span>Switch tab</span>
@@ -106,14 +114,6 @@ export function QuickStartDialog({ isOpen, onClose, isFirstLaunch = false }: Qui
                 <div className="shortcut-row">
                   <kbd>Ctrl+1-9</kbd>
                   <span>Switch workspace</span>
-                </div>
-                <div className="shortcut-row">
-                  <kbd>Cmd+Arrow</kbd>
-                  <span>Switch split pane</span>
-                </div>
-                <div className="shortcut-row">
-                  <kbd>Hold Cmd</kbd>
-                  <span>Show hints</span>
                 </div>
               </div>
             </div>
@@ -131,12 +131,12 @@ export function QuickStartDialog({ isOpen, onClose, isFirstLaunch = false }: Qui
                 <span>ENV vars per workspace</span>
               </div>
               <div className="feature">
-                <span className="feature-icon">🎨</span>
-                <span>5 color themes</span>
+                <span className="feature-icon">🔍</span>
+                <span>Terminal search</span>
               </div>
               <div className="feature">
-                <span className="feature-icon">💾</span>
-                <span>Session persistence</span>
+                <span className="feature-icon">📋</span>
+                <span>Drag to reorder tabs</span>
               </div>
             </div>
           </section>

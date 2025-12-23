@@ -324,6 +324,32 @@ class WorkspaceStore {
     this.notify()
   }
 
+  reorderTerminals(workspaceId: string, fromIndex: number, toIndex: number): void {
+    // Get terminals for this workspace (excluding split panes)
+    const workspaceTerminals = this.state.terminals.filter(
+      t => t.workspaceId === workspaceId && !t.splitFromId
+    )
+    const otherTerminals = this.state.terminals.filter(
+      t => t.workspaceId !== workspaceId || t.splitFromId
+    )
+
+    if (fromIndex < 0 || fromIndex >= workspaceTerminals.length) return
+    if (toIndex < 0 || toIndex >= workspaceTerminals.length) return
+
+    // Reorder the workspace terminals
+    const reordered = [...workspaceTerminals]
+    const [moved] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, moved)
+
+    // Merge back with other terminals
+    this.state = {
+      ...this.state,
+      terminals: [...reordered, ...otherTerminals]
+    }
+
+    this.notify()
+  }
+
   setFocusedTerminal(id: string | null): void {
     if (this.state.focusedTerminalId === id) return
 

@@ -1,27 +1,38 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebglAddon } from '@xterm/addon-webgl'
 import { SerializeAddon } from '@xterm/addon-serialize'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { SearchAddon } from '@xterm/addon-search'
 import '@xterm/xterm/css/xterm.css'
 import { tauriAPI } from '../lib/tauri-bridge'
 import { registerTerminal, unregisterTerminal } from '../lib/pty-listeners'
 import { registerTerminalInstance, unregisterTerminalInstance } from '../lib/terminal-registry'
 import { workspaceStore } from '../stores/workspace-store'
+import { TerminalSearchBar } from './TerminalSearchBar'
+import { TerminalContextMenu } from './TerminalContextMenu'
 
 interface TerminalPanelProps {
   terminalId: string
   isActive: boolean
   cwd?: string  // CWD for creating PTY
   savedScrollbackContent?: string  // Saved content to restore
+  onActivity?: () => void  // Callback when terminal has new output
 }
 
-export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackContent }: TerminalPanelProps) {
+export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackContent, onActivity }: TerminalPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const webglAddonRef = useRef<WebglAddon | null>(null)
+  const searchAddonRef = useRef<SearchAddon | null>(null)
+
+  // Search bar state
+  const [showSearch, setShowSearch] = useState(false)
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -45,9 +56,12 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
     const fitAddon = new FitAddon()
     const serializeAddon = new SerializeAddon()
     const unicode11Addon = new Unicode11Addon()
+    const searchAddon = new SearchAddon()
     terminal.loadAddon(fitAddon)
     terminal.loadAddon(serializeAddon)
     terminal.loadAddon(unicode11Addon)
+    terminal.loadAddon(searchAddon)
+    searchAddonRef.current = searchAddon
     // Activate Unicode 11 for better emoji and special character support
     terminal.unicode.activeVersion = '11'
     terminal.open(containerRef.current)
@@ -90,10 +104,14 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       tauriAPI.pty.write(terminalId, data)
     })
 
-    // Output handler
+    // Output handler with activity notification
     registerTerminal(
       terminalId,
-      (data) => terminal.write(data),
+      (data) => {
+        terminal.write(data)
+        // Notify activity for inactive terminals
+        if (onActivity) onActivity()
+      },
       (code) => {
         terminal.write(`\r\n[exit: ${code}]\r\n`)
         // Auto-close the terminal tab after a short delay
@@ -143,9 +161,10 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
         webglAddonRef.current.dispose()
         webglAddonRef.current = null
       }
+      searchAddonRef.current = null
       terminal.dispose()
     }
-  }, [terminalId])
+  }, [terminalId, onActivity])
 
   // Focus terminal when it becomes active
   useEffect(() => {
@@ -159,5 +178,114 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
     }
   }, [isActive])
 
-  return <div ref={containerRef} className="terminal-panel" />
+  // Keyboard handler for Cmd+F (search)
+  useEffect(() => {
+    if (!isActive) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+      const modKey = isMac ? e.metaKey : e.ctrlKey
+
+      if (modKey && e.key === 'f') {
+        e.preventDefault()
+        e.stopPropagation()
+        setShowSearch(prev => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [isActive])
+
+  // Context menu handler
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY })
+  }, [])
+
+  // Copy selection to clipboard
+  const handleCopy = useCallback(() => {
+    const selection = terminalRef.current?.getSelection()
+    if (selection) {
+      navigator.clipboard.writeText(selection)
+    }
+  }, [])
+
+  // Paste from clipboard
+  const handlePaste = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text && terminalRef.current) {
+        tauriAPI.pty.write(terminalId, text)
+      }
+    } catch (err) {
+      console.error('Paste failed:', err)
+    }
+  }, [terminalId])
+
+  // Clear terminal
+  const handleClear = useCallback(() => {
+    terminalRef.current?.clear()
+  }, [])
+
+  // Select all
+  const handleSelectAll = useCallback(() => {
+    terminalRef.current?.selectAll()
+  }, [])
+
+  // Get context menu items
+  const contextMenuItems = [
+    {
+      label: 'Copy',
+      action: handleCopy,
+      shortcut: 'Cmd+C',
+      disabled: !terminalRef.current?.hasSelection()
+    },
+    {
+      label: 'Paste',
+      action: handlePaste,
+      shortcut: 'Cmd+V'
+    },
+    { divider: true, label: '', action: () => {} },
+    {
+      label: 'Select All',
+      action: handleSelectAll,
+      shortcut: 'Cmd+A'
+    },
+    {
+      label: 'Clear',
+      action: handleClear
+    },
+    { divider: true, label: '', action: () => {} },
+    {
+      label: 'Find...',
+      action: () => setShowSearch(true),
+      shortcut: 'Cmd+F'
+    }
+  ]
+
+  return (
+    <div className="terminal-panel-wrapper">
+      <TerminalSearchBar
+        isVisible={showSearch}
+        searchAddon={searchAddonRef.current}
+        onClose={() => {
+          setShowSearch(false)
+          terminalRef.current?.focus()
+        }}
+      />
+      <div
+        ref={containerRef}
+        className="terminal-panel"
+        onContextMenu={handleContextMenu}
+      />
+      {contextMenu && (
+        <TerminalContextMenu
+          position={contextMenu}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+    </div>
+  )
 }

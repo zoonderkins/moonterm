@@ -39,6 +39,38 @@ export const WorkspaceView = memo(function WorkspaceView({
   const [isResizing, setIsResizing] = useState(false)
   const isVertical = splitDirection === 'vertical'
 
+  // Track terminals with new activity (for tab indicator)
+  const [activeTerminalIds, setActiveTerminalIds] = useState<Set<string>>(new Set())
+
+  // Clear activity indicator when a terminal becomes focused
+  useEffect(() => {
+    if (focusedTerminalId && activeTerminalIds.has(focusedTerminalId)) {
+      setActiveTerminalIds(prev => {
+        const next = new Set(prev)
+        next.delete(focusedTerminalId)
+        return next
+      })
+    }
+  }, [focusedTerminalId, activeTerminalIds])
+
+  // Handle activity notification from terminal
+  const handleTerminalActivity = useCallback((terminalId: string) => {
+    // Only add to activity set if this terminal is not currently focused
+    if (terminalId !== focusedTerminalId) {
+      setActiveTerminalIds(prev => {
+        if (prev.has(terminalId)) return prev
+        const next = new Set(prev)
+        next.add(terminalId)
+        return next
+      })
+    }
+  }, [focusedTerminalId])
+
+  // Handle tab reorder
+  const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
+    workspaceStore.reorderTerminals(workspace.id, fromIndex, toIndex)
+  }, [workspace.id])
+
   // Save split ratio when it changes
   useEffect(() => {
     localStorage.setItem('split-ratio', splitRatio.toString())
@@ -142,9 +174,11 @@ export const WorkspaceView = memo(function WorkspaceView({
         <TabBar
           terminals={terminals}
           focusedTerminalId={focusedTerminalId}
+          activeTerminalIds={activeTerminalIds}
           onFocus={handleFocus}
           onClose={handleCloseTerminal}
           onAddTerminal={handleAddTerminal}
+          onReorder={handleReorder}
           showShortcutHints={showShortcutHints}
         />
       )}
@@ -179,6 +213,7 @@ export const WorkspaceView = memo(function WorkspaceView({
                   isActive={terminal.id === mainTerminal?.id && focusedPane === 'main'}
                   cwd={terminal.cwd}
                   savedScrollbackContent={terminal.savedScrollbackContent}
+                  onActivity={() => handleTerminalActivity(terminal.id)}
                 />
               </div>
             ))}
@@ -204,6 +239,7 @@ export const WorkspaceView = memo(function WorkspaceView({
                   terminalId={splitTerminal.id}
                   isActive={focusedPane === 'split'}
                   cwd={splitTerminal.cwd}
+                  onActivity={() => handleTerminalActivity(splitTerminal.id)}
                 />
               </div>
             </>

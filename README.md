@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.9-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.10-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Tauri](https://img.shields.io/badge/tauri-2.x-FFC131.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -21,6 +21,10 @@
 - **Tab ENV Button** - View environment variables per terminal (click ENV on any tab)
 - **Activity Indicators** - Workspace turns green when terminals are running, orange when idle
 - **Browser-Style Tabs** - Terminal tabs at top with hover preview
+- **Tab Drag Reorder** - Drag tabs to reorder them
+- **Tab Activity Indicator** - Blue pulsing dot shows new output on inactive tabs
+- **Terminal Search** - Press Cmd+F to search in terminal content
+- **Right-Click Context Menu** - Copy, paste, select all, clear, and find via context menu
 - **Terminal Split** - Split terminals horizontally (Cmd+D) or vertically (Cmd+Shift+D)
 - **Split Pane Focus** - Click to switch focus between split panes (blue border indicates active)
 - **Resizable Sidebar** - Drag edge to resize (160-400px), double-click to reset
@@ -90,6 +94,7 @@ npm run tauri:build
 |----------|--------|
 | `Cmd+T` | New terminal tab |
 | `Cmd+W` | Close current terminal tab |
+| `Cmd+F` | Search in terminal |
 | `Cmd+D` | Split terminal horizontally (top/bottom) |
 | `Cmd+Shift+D` | Split terminal vertically (left/right) |
 | `Cmd+↑` / `Cmd+↓` | Switch focus between top/bottom panes |
@@ -97,7 +102,9 @@ npm run tauri:build
 | `Cmd+1` ~ `Cmd+9` | Switch to terminal 1-9 |
 | `Ctrl+1` ~ `Ctrl+9` | Switch to workspace 1-9 |
 | Hold `Cmd` | Show shortcut hints |
+| Right-click | Context menu (copy/paste/clear/find) |
 | Double-click title | Rename terminal/workspace |
+| Drag tab | Reorder tabs |
 
 ### Windows / Linux
 
@@ -105,9 +112,12 @@ npm run tauri:build
 |----------|--------|
 | `Ctrl+T` | New terminal tab |
 | `Ctrl+W` | Close current terminal tab |
+| `Ctrl+F` | Search in terminal |
 | `Ctrl+D` | Split terminal horizontally (top/bottom) |
 | `Ctrl+Shift+D` | Split terminal vertically (left/right) |
 | `Ctrl+1` ~ `Ctrl+9` | Switch to workspace 1-9 |
+| Right-click | Context menu (copy/paste/clear/find) |
+| Drag tab | Reorder tabs |
 
 > **Note**: On macOS, `Ctrl+C`, `Ctrl+W`, etc. are passed directly to the terminal (for shell commands like interrupt, delete word). Use `Cmd` for app shortcuts.
 
@@ -254,7 +264,10 @@ moonterm/
 │   │   ├── PasswordDialog    # Workspace encryption dialog
 │   │   ├── EnvPopover        # Environment variables viewer
 │   │   ├── ResizeHandle      # Drag-to-resize component
-│   │   └── ActivityIndicator # Terminal activity status
+│   │   ├── ActivityIndicator # Terminal activity status
+│   │   ├── TerminalSearchBar # Cmd+F search overlay
+│   │   ├── TerminalContextMenu # Right-click context menu
+│   │   └── QuickStartDialog  # First-launch help dialog
 │   ├── lib/                  # Utilities (tauri-bridge, pty-listeners)
 │   ├── stores/               # State management
 │   └── styles/               # CSS

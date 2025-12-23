@@ -1924,3 +1924,186 @@ body {
 .quick-start-footer .dialog-btn {
   margin-left: auto;
 }
+
+/* ========================================
+   Terminal Panel Wrapper
+   ======================================== */
+.terminal-panel-wrapper {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-panel-wrapper .terminal-panel {
+  flex: 1;
+}
+
+/* ========================================
+   Terminal Search Bar
+   ======================================== */
+.terminal-search-bar {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+.terminal-search-bar .search-input {
+  width: 200px;
+  padding: 6px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.terminal-search-bar .search-input:focus {
+  border-color: var(--accent-color);
+}
+
+.terminal-search-bar .search-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.terminal-search-bar .search-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.terminal-search-bar .search-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-color);
+}
+
+.terminal-search-bar .search-status {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 60px;
+}
+
+.terminal-search-bar .search-status.no-match {
+  color: var(--danger-color);
+}
+
+.terminal-search-bar .search-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.terminal-search-bar .search-close-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ========================================
+   Terminal Context Menu
+   ======================================== */
+.terminal-context-menu {
+  position: fixed;
+  min-width: 180px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  padding: 4px 0;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.context-menu-item:hover:not(.disabled) {
+  background: var(--accent-color);
+  color: white;
+}
+
+.context-menu-item.disabled {
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.context-menu-label {
+  flex: 1;
+}
+
+.context-menu-shortcut {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-left: 24px;
+}
+
+.context-menu-item:hover:not(.disabled) .context-menu-shortcut {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 8px;
+}
+
+/* ========================================
+   Tab Activity Indicator
+   ======================================== */
+.tab-activity-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  animation: pulse-activity 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-activity {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+.tab.active .tab-activity-dot {
+  display: none;
+}

@@ -6,23 +6,30 @@ import { EnvPopover } from './EnvPopover'
 interface TabBarProps {
   terminals: TerminalInstance[]
   focusedTerminalId: string | null
+  activeTerminalIds: Set<string>  // Terminals with recent activity
   onFocus: (id: string) => void
   onClose: (id: string) => void
   onAddTerminal: () => void
+  onReorder: (fromIndex: number, toIndex: number) => void
   showShortcutHints?: boolean
 }
 
 interface TabProps {
   terminal: TerminalInstance
   isActive: boolean
+  hasActivity: boolean  // Has new output while inactive
   index: number
   onClick: () => void
   onClose: () => void
   showShortcutHint?: boolean
   onShowEnv: (e: React.MouseEvent) => void
+  onDragStart: (e: React.DragEvent) => void
+  onDragOver: (e: React.DragEvent) => void
+  onDrop: (e: React.DragEvent) => void
+  onDragEnd: (e: React.DragEvent) => void
 }
 
-function Tab({ terminal, isActive, index, onClick, onClose, showShortcutHint, onShowEnv }: TabProps) {
+function Tab({ terminal, isActive, hasActivity, index, onClick, onClose, showShortcutHint, onShowEnv, onDragStart, onDragOver, onDrop, onDragEnd }: TabProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
   const [showTooltip, setShowTooltip] = useState(false)
@@ -80,9 +87,18 @@ function Tab({ terminal, isActive, index, onClick, onClose, showShortcutHint, on
       onDoubleClick={handleDoubleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
     >
       {showShortcutHint && index < 9 && (
         <span className="tab-shortcut-hint">{index + 1}</span>
+      )}
+
+      {hasActivity && !isActive && (
+        <span className="tab-activity-dot" title="New output" />
       )}
 
       {isEditing ? (
@@ -134,9 +150,11 @@ function Tab({ terminal, isActive, index, onClick, onClose, showShortcutHint, on
 export function TabBar({
   terminals,
   focusedTerminalId,
+  activeTerminalIds,
   onFocus,
   onClose,
   onAddTerminal,
+  onReorder,
   showShortcutHints = false
 }: TabBarProps) {
   const [envPopover, setEnvPopover] = useState<{
@@ -144,6 +162,9 @@ export function TabBar({
     workspaceId: string
     position: { x: number; y: number }
   } | null>(null)
+
+  // Drag state for tab reordering
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
   const handleShowEnv = (terminal: TerminalInstance, e: React.MouseEvent) => {
     const rect = (e.target as HTMLElement).getBoundingClientRect()
@@ -154,6 +175,42 @@ export function TabBar({
     })
   }
 
+  // Drag handlers for tab reordering
+  const handleDragStart = useCallback((index: number) => (e: React.DragEvent) => {
+    setDraggedIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', String(index))
+    // Add visual feedback
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5'
+    }
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }, [])
+
+  const handleDrop = useCallback((targetIndex: number) => (e: React.DragEvent) => {
+    e.preventDefault()
+    const sourceIndex = draggedIndex
+    if (sourceIndex !== null && sourceIndex !== targetIndex) {
+      onReorder(sourceIndex, targetIndex)
+    }
+    setDraggedIndex(null)
+    // Reset opacity
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1'
+    }
+  }, [draggedIndex, onReorder])
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    setDraggedIndex(null)
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1'
+    }
+  }, [])
+
   return (
     <div className="tab-bar">
       <div className="tabs-container">
@@ -162,11 +219,16 @@ export function TabBar({
             key={terminal.id}
             terminal={terminal}
             isActive={terminal.id === focusedTerminalId}
+            hasActivity={activeTerminalIds.has(terminal.id)}
             index={index}
             onClick={() => onFocus(terminal.id)}
             onClose={() => onClose(terminal.id)}
             showShortcutHint={showShortcutHints}
             onShowEnv={(e) => handleShowEnv(terminal, e)}
+            onDragStart={handleDragStart(index)}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop(index)}
+            onDragEnd={handleDragEnd}
           />
         ))}
         <button
