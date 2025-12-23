@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { listen } from '@tauri-apps/api/event'
 import { workspaceStore } from './stores/workspace-store'
 import { Sidebar } from './components/Sidebar'
 import { WorkspaceView } from './components/WorkspaceView'
@@ -7,6 +8,7 @@ import { SettingsDialog, applyTheme, getSavedTheme, type ThemeKey } from './comp
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
 import { PasswordDialog } from './components/PasswordDialog'
 import { ResizeHandle } from './components/ResizeHandle'
+import { QuickStartDialog, hasSeenQuickStart } from './components/QuickStartDialog'
 import { initPtyListeners } from './lib/pty-listeners'
 import type { AppState } from './types'
 import { tauriAPI } from './lib/tauri-bridge'
@@ -26,6 +28,9 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<ThemeKey>('default')
   const [showCloseConfirm, setShowCloseConfirm] = useState(false)
+  // Quick Start dialog - show on first launch
+  const [showQuickStart, setShowQuickStart] = useState(() => !hasSeenQuickStart())
+  const [isFirstLaunch] = useState(() => !hasSeenQuickStart())
   // Sidebar width state
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebarWidth')
@@ -59,6 +64,21 @@ export default function App() {
     const savedTheme = getSavedTheme()
     setCurrentTheme(savedTheme)
     applyTheme(savedTheme)
+  }, [])
+
+  // Listen for menu events (Help -> Quick Start)
+  useEffect(() => {
+    let unlisten: (() => void) | null = null
+
+    listen('menu:quick-start', () => {
+      setShowQuickStart(true)
+    }).then(fn => {
+      unlisten = fn
+    })
+
+    return () => {
+      if (unlisten) unlisten()
+    }
   }, [])
 
   // Listen for window close request (Cmd+Q, clicking X button)
@@ -516,6 +536,12 @@ export default function App() {
           onDelete={passwordDialog.mode === 'unlock' ? handleForgotPassword : handleDeleteLockedWorkspace}
         />
       )}
+
+      <QuickStartDialog
+        isOpen={showQuickStart}
+        onClose={() => setShowQuickStart(false)}
+        isFirstLaunch={isFirstLaunch}
+      />
     </div>
   )
 }

@@ -6,7 +6,8 @@ mod workspace;
 
 use pty::PtyManager;
 use std::sync::Arc;
-use tauri::Manager;
+use tauri::menu::{Menu, MenuItem, Submenu};
+use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -15,14 +16,28 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let app_handle = app.handle().clone();
-            let pty_manager = Arc::new(PtyManager::new(app_handle));
+            let pty_manager = Arc::new(PtyManager::new(app_handle.clone()));
             app.manage(pty_manager);
+
+            // Create Help menu with Quick Start item
+            let quick_start = MenuItem::with_id(app, "quick_start", "Quick Start", true, None::<&str>)?;
+            let help_menu = Submenu::with_items(app, "Help", true, &[&quick_start])?;
+
+            // Get the default menu and append our Help menu
+            let menu = Menu::with_items(app, &[&help_menu])?;
+            app.set_menu(menu)?;
 
             // DevTools can be opened via right-click context menu -> Inspect
             // Not opening automatically to keep UI clean
             let _ = app.get_webview_window("main"); // Keep reference for debugging if needed
 
             Ok(())
+        })
+        .on_menu_event(|app, event| {
+            if event.id() == "quick_start" {
+                // Emit event to frontend to show Quick Start dialog
+                let _ = app.emit("menu:quick-start", ());
+            }
         })
         .invoke_handler(tauri::generate_handler![
             // PTY commands
