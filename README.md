@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.10-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.13-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Tauri](https://img.shields.io/badge/tauri-2.x-FFC131.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -31,6 +31,7 @@
 - **Collapsible Sidebar** - Minimize to show workspace numbers only
 - **Keyboard Shortcuts** - Quick switching with Ctrl+1-9, Cmd+T, Cmd+D
 - **Theme Support** - 5 built-in color themes (Default Dark, Purple Night, Pink Blossom, Pure Black, Colorblind Safe)
+- **Font Settings** - Customize terminal font family and size (10-24px) with instant preview
 - **Session Export/Import** - Save and restore workspace layouts and settings as JSON
 - **Terminal History Persistence** - Scrollback history saved and restored across app restarts
 - **Scroll History** - Terminal history preserved when switching tabs and workspaces
@@ -187,18 +188,40 @@ Click ⚙️ Settings → **Session** section to export or import session data.
 
 ## Font Configuration
 
-Moonterm supports Nerd Fonts for Powerline/Powerlevel10k compatibility. The font fallback order is:
+Click ⚙️ (Settings) → **Terminal Font** to customize your terminal font.
 
+### Font Settings UI
+
+| Setting | Options |
+|---------|---------|
+| **Font Family** | MesloLGS NF, Hack Nerd Font, FiraCode Nerd Font, JetBrains Mono, System Default |
+| **Font Size** | 10px - 24px (click +/- buttons) |
+
+Changes apply instantly to all open terminals.
+
+### Install Nerd Fonts (macOS)
+
+For icons in tools like LazyVim, Powerlevel10k, install via Homebrew:
+
+```bash
+# Recommended
+brew install --cask font-meslo-lg-nerd-font
+
+# Alternatives
+brew install --cask font-hack-nerd-font
+brew install --cask font-fira-code-nerd-font
+brew install --cask font-jetbrains-mono-nerd-font
 ```
-MesloLGS NF → FiraCode Nerd Font → Hack Nerd Font → JetBrainsMono Nerd Font → Menlo → Monaco → Courier New
-```
 
-### Recommended Fonts
+After installing, select your font in **Settings → Terminal Font**.
 
-For Powerlevel10k users, install one of these Nerd Fonts:
-- [MesloLGS NF](https://github.com/romkatv/powerlevel10k#fonts) (Recommended)
-- [FiraCode Nerd Font](https://www.nerdfonts.com/font-downloads)
-- [JetBrainsMono Nerd Font](https://www.nerdfonts.com/font-downloads)
+### Why Nerd Fonts?
+
+Nerd Fonts include thousands of icons used by:
+- **Powerlevel10k** - Git status, directory icons
+- **LazyVim/NeoVim** - File type icons, UI elements
+- **Starship** - Prompt symbols
+- **lsd/exa** - File listing icons
 
 > **Note**: Font ligatures (like `=>` becoming `⇒`) are not supported in terminal emulators due to fixed-width character grid requirements.
 
