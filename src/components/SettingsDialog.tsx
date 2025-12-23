@@ -4,6 +4,45 @@ import { workspaceStore } from '../stores/workspace-store'
 import { downloadSessionFile, importSession } from '../lib/session-manager'
 import { STORAGE_SCHEMA } from '../lib/version'
 
+// Font options for terminal
+export const fontOptions = [
+  { value: '"MesloLGS NF", monospace', label: 'MesloLGS NF (Recommended)' },
+  { value: '"Hack Nerd Font", monospace', label: 'Hack Nerd Font' },
+  { value: '"FiraCode Nerd Font", monospace', label: 'FiraCode Nerd Font' },
+  { value: '"JetBrainsMono Nerd Font", monospace', label: 'JetBrains Mono Nerd Font' },
+  { value: 'Menlo, Monaco, "Courier New", monospace', label: 'System Default' },
+]
+
+export interface FontSettings {
+  fontFamily: string
+  fontSize: number
+}
+
+const DEFAULT_FONT_SETTINGS: FontSettings = {
+  fontFamily: '"MesloLGS NF", "FiraCode Nerd Font", "Hack Nerd Font", "JetBrainsMono Nerd Font", Menlo, Monaco, "Courier New", monospace',
+  fontSize: 14,
+}
+
+// Get saved font settings
+export function getSavedFontSettings(): FontSettings {
+  try {
+    const saved = localStorage.getItem('terminal-font-settings')
+    if (saved) {
+      return { ...DEFAULT_FONT_SETTINGS, ...JSON.parse(saved) }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return DEFAULT_FONT_SETTINGS
+}
+
+// Save font settings and notify terminals
+export function saveFontSettings(settings: FontSettings) {
+  localStorage.setItem('terminal-font-settings', JSON.stringify(settings))
+  // Dispatch event to notify all terminals
+  window.dispatchEvent(new CustomEvent('font-settings-changed', { detail: settings }))
+}
+
 // Theme definitions
 export const themes = {
   default: {
@@ -92,13 +131,28 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [importStatus, setImportStatus] = useState<{ success: boolean; message: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [fontSettings, setFontSettings] = useState<FontSettings>(getSavedFontSettings)
 
   useEffect(() => {
     if (isOpen) {
       tauriAPI.workspace.getConfigPath().then(setConfigPath).catch(() => {})
       setImportStatus(null) // Clear status when dialog opens
+      setFontSettings(getSavedFontSettings()) // Reload font settings
     }
   }, [isOpen])
+
+  const handleFontFamilyChange = (value: string) => {
+    const newSettings = { ...fontSettings, fontFamily: value }
+    setFontSettings(newSettings)
+    saveFontSettings(newSettings)
+  }
+
+  const handleFontSizeChange = (value: number) => {
+    const size = Math.min(24, Math.max(10, value))
+    const newSettings = { ...fontSettings, fontSize: size }
+    setFontSettings(newSettings)
+    saveFontSettings(newSettings)
+  }
 
   const handleExport = () => {
     downloadSessionFile()
@@ -159,6 +213,50 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Font Settings */}
+        <div className="settings-section">
+          <label className="settings-label">Terminal Font</label>
+          <div className="font-settings">
+            <div className="font-setting-row">
+              <label>Font Family</label>
+              <select
+                className="font-select"
+                value={fontOptions.find(f => f.value === fontSettings.fontFamily)?.value || fontOptions[fontOptions.length - 1].value}
+                onChange={(e) => handleFontFamilyChange(e.target.value)}
+              >
+                {fontOptions.map((font) => (
+                  <option key={font.value} value={font.value}>
+                    {font.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="font-setting-row">
+              <label>Font Size</label>
+              <div className="font-size-input">
+                <button
+                  className="font-size-btn"
+                  onClick={() => handleFontSizeChange(fontSettings.fontSize - 1)}
+                  disabled={fontSettings.fontSize <= 10}
+                >
+                  −
+                </button>
+                <span className="font-size-value">{fontSettings.fontSize}px</span>
+                <button
+                  className="font-size-btn"
+                  onClick={() => handleFontSizeChange(fontSettings.fontSize + 1)}
+                  disabled={fontSettings.fontSize >= 24}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+          <p className="settings-hint">
+            Install Nerd Fonts for icon support: <code>brew install --cask font-meslo-lg-nerd-font</code>
+          </p>
         </div>
 
         {/* Config Path */}

@@ -12,6 +12,7 @@ import { registerTerminalInstance, unregisterTerminalInstance } from '../lib/ter
 import { workspaceStore } from '../stores/workspace-store'
 import { TerminalSearchBar } from './TerminalSearchBar'
 import { TerminalContextMenu } from './TerminalContextMenu'
+import { getSavedFontSettings, FontSettings } from './SettingsDialog'
 
 interface TerminalPanelProps {
   terminalId: string
@@ -41,10 +42,10 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
   useEffect(() => {
     if (!containerRef.current) return
 
+    const fontSettings = getSavedFontSettings()
     const terminal = new Terminal({
-      fontSize: 14,
-      // Nerd Fonts for Powerline/Powerlevel10k support, with fallbacks
-      fontFamily: '"MesloLGS NF", "FiraCode Nerd Font", "Hack Nerd Font", "JetBrainsMono Nerd Font", Menlo, Monaco, "Courier New", monospace',
+      fontSize: fontSettings.fontSize,
+      fontFamily: fontSettings.fontFamily,
       cursorBlink: true,
       scrollback: 5000,  // Limit scrollback for storage efficiency
       allowProposedApi: true,
@@ -156,10 +157,27 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
     ro.observe(containerRef.current)
     setTimeout(fit, 100)
 
+    // Listen for font settings changes
+    const handleFontChange = (e: Event) => {
+      const settings = (e as CustomEvent<FontSettings>).detail
+      terminal.options.fontFamily = settings.fontFamily
+      terminal.options.fontSize = settings.fontSize
+      // Refresh terminal to apply new font
+      terminal.refresh(0, terminal.rows - 1)
+      fitAddon.fit()
+    }
+    window.addEventListener('font-settings-changed', handleFontChange)
+
+    // Ensure fonts are loaded before initial render
+    document.fonts.ready.then(() => {
+      terminal.refresh(0, terminal.rows - 1)
+    })
+
     return () => {
       unregisterTerminal(terminalId)
       unregisterTerminalInstance(terminalId)
       ro.disconnect()
+      window.removeEventListener('font-settings-changed', handleFontChange)
       // Explicitly dispose WebGL addon to prevent context leak
       if (webglAddonRef.current) {
         webglAddonRef.current.dispose()
