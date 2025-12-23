@@ -28,6 +28,10 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
   const webglAddonRef = useRef<WebglAddon | null>(null)
   const searchAddonRef = useRef<SearchAddon | null>(null)
 
+  // Ref to hold latest onActivity callback (avoids useEffect dep causing terminal dispose)
+  const onActivityRef = useRef(onActivity)
+  onActivityRef.current = onActivity
+
   // Search bar state
   const [showSearch, setShowSearch] = useState(false)
 
@@ -110,7 +114,7 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       (data) => {
         terminal.write(data)
         // Notify activity for inactive terminals
-        if (onActivity) onActivity()
+        if (onActivityRef.current) onActivityRef.current()
       },
       (code) => {
         terminal.write(`\r\n[exit: ${code}]\r\n`)
@@ -164,7 +168,9 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       searchAddonRef.current = null
       terminal.dispose()
     }
-  }, [terminalId, onActivity])
+  // Note: onActivity is intentionally excluded from deps to prevent terminal dispose on callback change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [terminalId])
 
   // Focus terminal when it becomes active
   useEffect(() => {
