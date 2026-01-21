@@ -90,8 +90,7 @@ export function validateSession(data: unknown): data is SessionData {
 
 /**
  * Import session from JSON data
- * Note: This only imports workspace/terminal metadata, not scrollback content
- * (scrollback restoration would require PTY support which isn't implemented)
+ * Restores workspaces, terminals, and scrollback content
  */
 export async function importSession(file: File): Promise<{ success: boolean; message: string }> {
   try {
@@ -101,11 +100,6 @@ export async function importSession(file: File): Promise<{ success: boolean; mes
     if (!validateSession(data)) {
       return { success: false, message: 'Invalid session file format' }
     }
-
-    // Store the session data for reference
-    // Note: We can't fully restore terminals with their content,
-    // but we can restore the workspace structure
-    localStorage.setItem('imported-session', text)
 
     // Apply theme
     if (data.theme) {
@@ -117,9 +111,59 @@ export async function importSession(file: File): Promise<{ success: boolean; mes
       localStorage.setItem('split-ratio', data.splitRatio.toString())
     }
 
+    // Import workspaces with terminals and scrollback content
+    let workspacesImported = 0
+    let terminalsImported = 0
+
+    for (const sessionWorkspace of data.workspaces) {
+      // Check if workspace with same folder already exists
+      const existingWorkspace = workspaceStore.getState().workspaces.find(
+        w => w.folderPath === sessionWorkspace.folderPath
+      )
+
+      if (existingWorkspace) {
+        // Skip existing workspace
+        continue
+      }
+
+      // Create workspace
+      const workspace = workspaceStore.addWorkspace(sessionWorkspace.name, sessionWorkspace.folderPath)
+      workspacesImported++
+
+      // Create terminals for this workspace with scrollback content
+      for (const sessionTerminal of sessionWorkspace.terminals) {
+        workspaceStore.importTerminal(workspace.id, {
+          title: sessionTerminal.title,
+          cwd: sessionTerminal.cwd,
+          savedScrollbackContent: sessionTerminal.scrollbackContent
+        })
+        terminalsImported++
+      }
+    }
+
+    // Set active workspace if specified
+    if (data.activeWorkspaceId) {
+      const activeWs = workspaceStore.getState().workspaces.find(
+        w => data.workspaces.some((sw: SessionWorkspace) => sw.id === data.activeWorkspaceId && sw.folderPath === w.folderPath)
+      )
+      if (activeWs) {
+        workspaceStore.setActiveWorkspace(activeWs.id)
+      }
+    }
+
+    // Save the imported state
+    await workspaceStore.save()
+
+    if (workspacesImported === 0) {
+      return {
+        success: true,
+        message: 'All workspaces already exist. No new data imported.'
+      }
+    }
+
     return {
       success: true,
-      message: `Session exported on ${new Date(data.exportedAt).toLocaleDateString()} imported. Theme and settings applied. Reload to see changes.`
+      message: `Imported ${workspacesImported} workspace(s) with ${terminalsImported} terminal(s). Scrollback content restored.`
     }
   } catch (error) {
     return {

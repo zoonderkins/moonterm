@@ -9,6 +9,9 @@ import { CloseConfirmDialog } from './components/CloseConfirmDialog'
 import { PasswordDialog } from './components/PasswordDialog'
 import { ResizeHandle } from './components/ResizeHandle'
 import { QuickStartDialog, hasSeenQuickStart } from './components/QuickStartDialog'
+import { ToastProvider } from './components/Toast'
+import { CommandHistoryDialog } from './components/CommandHistoryDialog'
+import { BookmarksDialog } from './components/BookmarksDialog'
 import { initPtyListeners } from './lib/pty-listeners'
 import type { AppState } from './types'
 import { tauriAPI } from './lib/tauri-bridge'
@@ -32,6 +35,10 @@ export default function App() {
   // Quick Start dialog - show on first launch
   const [showQuickStart, setShowQuickStart] = useState(() => !hasSeenQuickStart())
   const [isFirstLaunch] = useState(() => !hasSeenQuickStart())
+  // Command history dialog
+  const [showCommandHistory, setShowCommandHistory] = useState(false)
+  // Bookmarks dialog
+  const [showBookmarks, setShowBookmarks] = useState(false)
   // Sidebar width state
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem('sidebarWidth')
@@ -402,6 +409,26 @@ export default function App() {
         return
       }
 
+      // Cmd+R (Mac) or Ctrl+R (Windows/Linux): Open command history
+      if (modKey && e.key === 'r') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (activeWorkspace && !activeWorkspace.isLocked) {
+          setShowCommandHistory(true)
+        }
+        return
+      }
+
+      // Cmd+B (Mac) or Ctrl+B (Windows/Linux): Open bookmarks
+      if (modKey && e.key === 'b') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (activeWorkspace && !activeWorkspace.isLocked) {
+          setShowBookmarks(true)
+        }
+        return
+      }
+
       // Cmd+Arrow keys: Switch split pane focus
       if (modKey && state.splitTerminalId) {
         const dir = state.splitDirection
@@ -477,7 +504,18 @@ export default function App() {
     applyTheme(theme)
   }, [])
 
+  // Handle command selection from history dialog
+  const handleCommandSelect = useCallback((command: string) => {
+    const focusedId = state.focusedTerminalId
+    if (!focusedId) return
+
+    // Write command to the focused terminal
+    // Add newline to execute the command
+    tauriAPI.pty.write(focusedId, command + '\n')
+  }, [state.focusedTerminalId])
+
   return (
+    <ToastProvider>
     <div className="app">
       <div className="sidebar-container" style={{ width: isSidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth }}>
         <Sidebar
@@ -562,6 +600,25 @@ export default function App() {
         onClose={() => setShowQuickStart(false)}
         isFirstLaunch={isFirstLaunch}
       />
+
+      {activeWorkspace && (
+        <CommandHistoryDialog
+          isOpen={showCommandHistory}
+          workspaceId={activeWorkspace.id}
+          onSelect={handleCommandSelect}
+          onClose={() => setShowCommandHistory(false)}
+        />
+      )}
+
+      {activeWorkspace && (
+        <BookmarksDialog
+          isOpen={showBookmarks}
+          workspaceId={activeWorkspace.id}
+          onSelect={handleCommandSelect}
+          onClose={() => setShowBookmarks(false)}
+        />
+      )}
     </div>
+    </ToastProvider>
   )
 }

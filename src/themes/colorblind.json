@@ -1,0 +1,17 @@
+{
+  "id": "colorblind",
+  "name": "Colorblind Safe",
+  "variant": "dark",
+  "author": "Moonterm",
+  "colors": {
+    "bgPrimary": "#1a1a2e",
+    "bgSecondary": "#16213e",
+    "bgTertiary": "#0f3460",
+    "bgHover": "#1a4070",
+    "textPrimary": "#e8e8e8",
+    "textSecondary": "#a0a0a0",
+    "borderColor": "#3a5a80",
+    "accentColor": "#e6a117",
+    "terminalBg": "#1a1a2e"
+  }
+}

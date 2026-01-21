@@ -5,6 +5,7 @@ import { WebglAddon } from '@xterm/addon-webgl'
 import { SerializeAddon } from '@xterm/addon-serialize'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { SearchAddon } from '@xterm/addon-search'
+import { LigaturesAddon } from '@xterm/addon-ligatures'
 import '@xterm/xterm/css/xterm.css'
 import { tauriAPI } from '../lib/tauri-bridge'
 import { registerTerminal, unregisterTerminal } from '../lib/pty-listeners'
@@ -12,7 +13,8 @@ import { registerTerminalInstance, unregisterTerminalInstance } from '../lib/ter
 import { workspaceStore } from '../stores/workspace-store'
 import { TerminalSearchBar } from './TerminalSearchBar'
 import { TerminalContextMenu } from './TerminalContextMenu'
-import { getSavedFontSettings, FontSettings } from './SettingsDialog'
+import { getSavedFontSettings, getEffectiveFontFamily, FontSettings } from './SettingsDialog'
+import { CommandInputBuffer } from '../lib/command-history'
 
 interface TerminalPanelProps {
   terminalId: string
@@ -28,6 +30,8 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
   const fitAddonRef = useRef<FitAddon | null>(null)
   const webglAddonRef = useRef<WebglAddon | null>(null)
   const searchAddonRef = useRef<SearchAddon | null>(null)
+  const ligaturesAddonRef = useRef<LigaturesAddon | null>(null)
+  const commandBufferRef = useRef<CommandInputBuffer | null>(null)
 
   // Ref to hold latest onActivity callback (avoids useEffect dep causing terminal dispose)
   const onActivityRef = useRef(onActivity)
@@ -43,9 +47,10 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
     if (!containerRef.current) return
 
     const fontSettings = getSavedFontSettings()
+    const effectiveFontFamily = getEffectiveFontFamily(fontSettings)
     const terminal = new Terminal({
       fontSize: fontSettings.fontSize,
-      fontFamily: fontSettings.fontFamily,
+      fontFamily: effectiveFontFamily,
       cursorBlink: true,
       scrollback: 5000,  // Limit scrollback for storage efficiency
       allowProposedApi: true,
@@ -92,6 +97,18 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       console.warn('[Terminal] WebGL not available, using canvas renderer')
     }
 
+    // Load ligatures addon if enabled
+    if (fontSettings.ligatures) {
+      try {
+        const ligaturesAddon = new LigaturesAddon()
+        terminal.loadAddon(ligaturesAddon)
+        ligaturesAddonRef.current = ligaturesAddon
+        console.info('[Terminal] Ligatures enabled')
+      } catch (err) {
+        console.warn('[Terminal] Failed to load ligatures addon:', err)
+      }
+    }
+
     fitAddon.fit()
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
@@ -104,8 +121,17 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       tauriAPI.pty.create({ id: terminalId, cwd })
     }
 
-    // Input handler
+    // Initialize command history buffer
+    // Get workspaceId from the terminal instance
+    const terminalInstance = workspaceStore.getState().terminals.find(t => t.id === terminalId)
+    if (terminalInstance) {
+      commandBufferRef.current = new CommandInputBuffer(terminalInstance.workspaceId)
+    }
+
+    // Input handler - also captures commands for history
     terminal.onData((data) => {
+      // Track command input for history (before sending to PTY)
+      commandBufferRef.current?.processInput(data)
       tauriAPI.pty.write(terminalId, data)
     })
 
@@ -160,22 +186,68 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
     setTimeout(fit, 100)
 
     // Listen for font settings changes
-    const handleFontChange = (e: Event) => {
+    const handleFontChange = async (e: Event) => {
       const settings = (e as CustomEvent<FontSettings>).detail
       console.log('[Terminal] Font settings changed:', settings)
-      terminal.options.fontFamily = settings.fontFamily
+
+      // Compute effective font family (including icon font fallback)
+      const effectiveFont = getEffectiveFontFamily(settings)
+      terminal.options.fontFamily = effectiveFont
       terminal.options.fontSize = settings.fontSize
-      // Refresh terminal to apply new font
-      terminal.refresh(0, terminal.rows - 1)
-      fitAddon.fit()
-      // For WebGL, need to trigger a re-render
-      if (webglAddonRef.current) {
+
+      // Wait for new font to load before refreshing
+      await document.fonts.ready
+
+      // Handle ligatures addon
+      if (settings.ligatures && !ligaturesAddonRef.current) {
+        // Enable ligatures
         try {
-          webglAddonRef.current.clearTextureAtlas()
+          const ligaturesAddon = new LigaturesAddon()
+          terminal.loadAddon(ligaturesAddon)
+          ligaturesAddonRef.current = ligaturesAddon
+          console.log('[Terminal] Ligatures enabled')
+        } catch (err) {
+          console.warn('[Terminal] Failed to load ligatures addon:', err)
+        }
+      } else if (!settings.ligatures && ligaturesAddonRef.current) {
+        // Disable ligatures
+        try {
+          ligaturesAddonRef.current.dispose()
+          ligaturesAddonRef.current = null
+          console.log('[Terminal] Ligatures disabled')
         } catch {
-          // Ignore if method not available
+          // Ignore dispose errors
         }
       }
+
+      // Dispose and recreate WebGL addon to fully clear font cache
+      if (webglAddonRef.current) {
+        try {
+          webglAddonRef.current.dispose()
+          webglAddonRef.current = null
+        } catch {
+          // Ignore dispose errors
+        }
+
+        // Recreate WebGL addon with fresh font cache
+        try {
+          const newWebglAddon = new WebglAddon()
+          newWebglAddon.onContextLoss(() => {
+            console.warn('[Terminal] WebGL context lost after font change')
+            newWebglAddon.dispose()
+            webglAddonRef.current = null
+          })
+          terminal.loadAddon(newWebglAddon)
+          webglAddonRef.current = newWebglAddon
+          console.log('[Terminal] WebGL addon recreated for new font')
+        } catch {
+          console.warn('[Terminal] Failed to recreate WebGL addon')
+        }
+      }
+
+      // Recalculate dimensions and force full redraw
+      fitAddon.fit()
+      terminal.refresh(0, terminal.rows - 1)
       console.log('[Terminal] Font applied:', terminal.options.fontFamily)
     }
     window.addEventListener('font-settings-changed', handleFontChange)
@@ -195,7 +267,13 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
         webglAddonRef.current.dispose()
         webglAddonRef.current = null
       }
+      // Dispose ligatures addon
+      if (ligaturesAddonRef.current) {
+        ligaturesAddonRef.current.dispose()
+        ligaturesAddonRef.current = null
+      }
       searchAddonRef.current = null
+      commandBufferRef.current = null
       terminal.dispose()
     }
   // Note: onActivity is intentionally excluded from deps to prevent terminal dispose on callback change

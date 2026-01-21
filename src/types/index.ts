@@ -77,3 +77,14 @@ export interface PtyExit {
   id: string;
   exitCode: number;
 }
+
+// Command bookmark for quick access to frequently used commands
+export interface CommandBookmark {
+  id: string;
+  command: string;
+  alias?: string;           // Short name for quick reference
+  description?: string;     // User note about what this command does
+  workspaceId: string;
+  createdAt: number;
+  updatedAt: number;
+}

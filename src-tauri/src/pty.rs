@@ -58,6 +58,103 @@ fn find_utf8_boundary(bytes: &[u8]) -> usize {
     end
 }
 
+/// Find the last complete ANSI escape sequence boundary.
+/// ANSI sequences start with ESC (0x1B) and can be:
+/// - CSI: ESC [ ... <final byte 0x40-0x7E>
+/// - OSC: ESC ] ... (ends with BEL 0x07 or ST = ESC \)
+/// - Simple: ESC <single char>
+/// Returns the position where we should cut to avoid splitting sequences.
+fn find_ansi_boundary(bytes: &[u8]) -> usize {
+    if bytes.is_empty() {
+        return 0;
+    }
+
+    const ESC: u8 = 0x1B;
+    const BEL: u8 = 0x07;
+
+    // Scan backwards to find any incomplete escape sequence
+    let len = bytes.len();
+
+    // Look for ESC in the last 256 bytes (escape sequences are typically short)
+    let search_start = len.saturating_sub(256);
+
+    for i in (search_start..len).rev() {
+        if bytes[i] == ESC {
+            // Found ESC, check if the sequence is complete
+            let seq = &bytes[i..];
+
+            if seq.len() < 2 {
+                // ESC at the very end, incomplete
+                return i;
+            }
+
+            match seq[1] {
+                b'[' => {
+                    // CSI sequence: ESC [ <params> <final>
+                    // Final byte is in range 0x40-0x7E (@ to ~)
+                    let mut found_final = false;
+                    for j in 2..seq.len() {
+                        let b = seq[j];
+                        if (0x40..=0x7E).contains(&b) {
+                            // Found final byte, sequence is complete
+                            found_final = true;
+                            break;
+                        }
+                        // Parameter bytes are 0x30-0x3F, intermediate are 0x20-0x2F
+                        if !((0x20..=0x3F).contains(&b)) {
+                            // Invalid sequence, treat as complete
+                            found_final = true;
+                            break;
+                        }
+                    }
+                    if !found_final {
+                        // Incomplete CSI sequence
+                        return i;
+                    }
+                }
+                b']' => {
+                    // OSC sequence: ESC ] <text> (BEL or ESC \)
+                    let mut found_end = false;
+                    for j in 2..seq.len() {
+                        if seq[j] == BEL {
+                            found_end = true;
+                            break;
+                        }
+                        // Check for ESC \ (ST)
+                        if seq[j] == ESC && j + 1 < seq.len() && seq[j + 1] == b'\\' {
+                            found_end = true;
+                            break;
+                        }
+                    }
+                    if !found_end {
+                        // Incomplete OSC sequence
+                        return i;
+                    }
+                }
+                b'P' | b'X' | b'^' | b'_' => {
+                    // DCS, SOS, PM, APC - string sequences ending with ST (ESC \)
+                    let mut found_end = false;
+                    for j in 2..seq.len() {
+                        if seq[j] == ESC && j + 1 < seq.len() && seq[j + 1] == b'\\' {
+                            found_end = true;
+                            break;
+                        }
+                    }
+                    if !found_end {
+                        return i;
+                    }
+                }
+                _ => {
+                    // Simple escape sequence (2 bytes), complete
+                }
+            }
+        }
+    }
+
+    // No incomplete sequence found
+    len
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreatePtyOptions {
     pub id: String,
@@ -256,7 +353,7 @@ impl PtyManager {
             // Larger buffer to reduce ANSI sequence fragmentation
             // Claude Code and other TUI apps emit many escape sequences
             let mut buf = [0u8; 16384];
-            // Pending incomplete UTF-8 bytes from previous read
+            // Pending incomplete UTF-8/ANSI bytes from previous read
             let mut pending: Vec<u8> = Vec::new();
 
             loop {
@@ -267,9 +364,11 @@ impl PtyManager {
                         let mut data_bytes = std::mem::take(&mut pending);
                         data_bytes.extend_from_slice(&buf[..n]);
 
-                        // Find the last valid UTF-8 boundary
-                        // This prevents cutting multi-byte characters or escape sequences
-                        let valid_len = find_utf8_boundary(&data_bytes);
+                        // Find the safe boundary for both UTF-8 and ANSI sequences
+                        // Use the minimum to ensure neither is split
+                        let utf8_bound = find_utf8_boundary(&data_bytes);
+                        let ansi_bound = find_ansi_boundary(&data_bytes[..utf8_bound]);
+                        let valid_len = ansi_bound;
 
                         if valid_len > 0 {
                             let data = String::from_utf8_lossy(&data_bytes[..valid_len]).to_string();

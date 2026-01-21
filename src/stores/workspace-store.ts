@@ -3,6 +3,7 @@ import type { Workspace, TerminalInstance, AppState, SplitDirection, FocusedPane
 import { tauriAPI } from '../lib/tauri-bridge'
 import { getAllTerminalContents } from '../lib/terminal-registry'
 import { STORAGE_SCHEMA } from '../lib/version'
+import { toastEvents } from '../lib/toast-events'
 
 // Activity threshold: terminal is "active" if last activity was within this time
 export const ACTIVITY_THRESHOLD_MS = 10_000 // 10 seconds
@@ -279,6 +280,34 @@ class WorkspaceStore {
       ...this.state,
       terminals: [...this.state.terminals, terminal],
       focusedTerminalId: terminal.id  // Always focus new terminal
+    }
+
+    this.notify()
+    return terminal
+  }
+
+  // Import a terminal with saved scrollback content (used by session import)
+  importTerminal(workspaceId: string, data: {
+    title: string
+    cwd: string
+    savedScrollbackContent?: string
+  }): TerminalInstance {
+    const workspace = this.state.workspaces.find(w => w.id === workspaceId)
+    if (!workspace) throw new Error('Workspace not found')
+
+    const terminal: TerminalInstance = {
+      id: uuidv4(),
+      workspaceId,
+      title: data.title,
+      cwd: data.cwd,
+      scrollbackBuffer: [],
+      savedScrollbackContent: data.savedScrollbackContent
+    }
+
+    this.state = {
+      ...this.state,
+      terminals: [...this.state.terminals, terminal],
+      focusedTerminalId: terminal.id
     }
 
     this.notify()
@@ -571,7 +600,7 @@ class WorkspaceStore {
     } catch (error) {
       console.error('[WorkspaceStore] Failed to save workspace:', error)
       // Don't throw - saving is a background operation
-      // TODO: Consider showing a non-blocking notification to the user
+      toastEvents.error('Failed to save workspace data')
     }
   }
 

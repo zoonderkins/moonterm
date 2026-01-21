@@ -1,0 +1,17 @@
+{
+  "id": "black",
+  "name": "Pure Black",
+  "variant": "dark",
+  "author": "Moonterm",
+  "colors": {
+    "bgPrimary": "#000000",
+    "bgSecondary": "#1a1a1a",
+    "bgTertiary": "#262626",
+    "bgHover": "#363636",
+    "textPrimary": "#ffffff",
+    "textSecondary": "#b8b8b8",
+    "borderColor": "#4a4a4a",
+    "accentColor": "#ffffff",
+    "terminalBg": "#000000"
+  }
+}

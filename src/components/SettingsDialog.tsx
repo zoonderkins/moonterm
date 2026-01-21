@@ -3,6 +3,18 @@ import { tauriAPI } from '../lib/tauri-bridge'
 import { workspaceStore } from '../stores/workspace-store'
 import { downloadSessionFile, importSession } from '../lib/session-manager'
 import { STORAGE_SCHEMA } from '../lib/version'
+import {
+  getAllThemes,
+  getThemeById,
+  getSavedThemeId,
+  saveThemeId,
+  applyTheme as applyThemeToDocument,
+  importTheme,
+  deleteCustomTheme,
+  getBuiltInThemes,
+} from '../lib/theme-manager'
+import type { ValidatedTheme } from '../themes/schema'
+import { KeybindSettings } from './KeybindSettings'
 
 // Font options for terminal (use Mono variants for proper terminal rendering)
 export const fontOptions = [
@@ -13,14 +25,28 @@ export const fontOptions = [
   { value: 'Menlo, Monaco, "Courier New", monospace', label: 'System Default' },
 ]
 
+// Icon font options (for Nerd Font icons fallback)
+export const iconFontOptions = [
+  { value: '', label: 'None (use main font)' },
+  { value: '"MesloLGS NF", "MesloLGS Nerd Font Mono"', label: 'MesloLGS NF' },
+  { value: '"Hack Nerd Font Mono"', label: 'Hack Nerd Font Mono' },
+  { value: '"FiraCode Nerd Font Mono"', label: 'FiraCode Nerd Font Mono' },
+  { value: '"JetBrainsMono Nerd Font Mono"', label: 'JetBrains Mono Nerd Font' },
+  { value: '"Symbols Nerd Font Mono"', label: 'Symbols Nerd Font (icons only)' },
+]
+
 export interface FontSettings {
   fontFamily: string
   fontSize: number
+  ligatures: boolean
+  iconFont: string  // Additional font for Nerd Font icons (appended to fontFamily)
 }
 
 const DEFAULT_FONT_SETTINGS: FontSettings = {
   fontFamily: '"MesloLGS NF", "MesloLGS Nerd Font Mono", "Hack Nerd Font Mono", "FiraCode Nerd Font Mono", "JetBrainsMono Nerd Font Mono", Menlo, Monaco, "Courier New", monospace',
   fontSize: 14,
+  ligatures: false,
+  iconFont: '',
 }
 
 // Get saved font settings
@@ -43,81 +69,18 @@ export function saveFontSettings(settings: FontSettings) {
   window.dispatchEvent(new CustomEvent('font-settings-changed', { detail: settings }))
 }
 
-// Theme definitions
-export const themes = {
-  default: {
-    name: 'Default (Dark)',
-    colors: {
-      '--bg-primary': '#1e1e1e',
-      '--bg-secondary': '#252526',
-      '--bg-tertiary': '#2d2d2d',
-      '--bg-hover': '#3c3c3c',
-      '--text-primary': '#cccccc',
-      '--text-secondary': '#888888',
-      '--border-color': '#404040',
-      '--accent-color': '#0078d4',
-      '--terminal-bg': '#1e1e1e',
-    }
-  },
-  purple: {
-    name: 'Purple Night',
-    colors: {
-      '--bg-primary': '#1a1625',
-      '--bg-secondary': '#2d2640',
-      '--bg-tertiary': '#3d3455',
-      '--bg-hover': '#4d4465',
-      '--text-primary': '#e0d4f7',
-      '--text-secondary': '#9d8dc2',
-      '--border-color': '#5a4d7a',
-      '--accent-color': '#9d4edd',
-      '--terminal-bg': '#1a1625',
-    }
-  },
-  pink: {
-    name: 'Pink Blossom',
-    colors: {
-      '--bg-primary': '#1f1a1c',
-      '--bg-secondary': '#2d2528',
-      '--bg-tertiary': '#3d3235',
-      '--bg-hover': '#4d4245',
-      '--text-primary': '#f5e0e6',
-      '--text-secondary': '#c29da6',
-      '--border-color': '#5a4d52',
-      '--accent-color': '#e91e8c',
-      '--terminal-bg': '#1f1a1c',
-    }
-  },
-  black: {
-    name: 'Pure Black',
-    colors: {
-      '--bg-primary': '#000000',
-      '--bg-secondary': '#1a1a1a',
-      '--bg-tertiary': '#262626',
-      '--bg-hover': '#363636',
-      '--text-primary': '#ffffff',
-      '--text-secondary': '#b8b8b8',
-      '--border-color': '#4a4a4a',
-      '--accent-color': '#ffffff',
-      '--terminal-bg': '#000000',
-    }
-  },
-  colorblind: {
-    name: 'Colorblind Safe',
-    colors: {
-      '--bg-primary': '#1a1a2e',
-      '--bg-secondary': '#16213e',
-      '--bg-tertiary': '#0f3460',
-      '--bg-hover': '#1a4070',
-      '--text-primary': '#e8e8e8',  // Near white for high contrast
-      '--text-secondary': '#a0a0a0',
-      '--border-color': '#3a5a80',
-      '--accent-color': '#e6a117',  // Orange/amber - colorblind safe
-      '--terminal-bg': '#1a1a2e',
-    }
-  },
+// Compute the effective font-family string (with icon font fallback if set)
+export function getEffectiveFontFamily(settings: FontSettings): string {
+  if (settings.iconFont) {
+    // Remove 'monospace' from main font, add icon font, then add monospace at the end
+    const mainFont = settings.fontFamily.replace(/, ?monospace$/, '')
+    return `${mainFont}, ${settings.iconFont}, monospace`
+  }
+  return settings.fontFamily
 }
 
-export type ThemeKey = keyof typeof themes
+// ThemeKey is now a string (theme ID)
+export type ThemeKey = string
 
 interface SettingsDialogProps {
   isOpen: boolean
@@ -131,13 +94,18 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [importStatus, setImportStatus] = useState<{ success: boolean; message: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const themeInputRef = useRef<HTMLInputElement>(null)
   const [fontSettings, setFontSettings] = useState<FontSettings>(getSavedFontSettings)
+  const [themes, setThemes] = useState<ValidatedTheme[]>([])
+  const [themeImportStatus, setThemeImportStatus] = useState<{ success: boolean; message: string } | null>(null)
 
   useEffect(() => {
     if (isOpen) {
       tauriAPI.workspace.getConfigPath().then(setConfigPath).catch(() => {})
       setImportStatus(null) // Clear status when dialog opens
+      setThemeImportStatus(null)
       setFontSettings(getSavedFontSettings()) // Reload font settings
+      setThemes(getAllThemes()) // Load themes
     }
   }, [isOpen])
 
@@ -150,6 +118,18 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
   const handleFontSizeChange = (value: number) => {
     const size = Math.min(24, Math.max(10, value))
     const newSettings = { ...fontSettings, fontSize: size }
+    setFontSettings(newSettings)
+    saveFontSettings(newSettings)
+  }
+
+  const handleLigaturesChange = (enabled: boolean) => {
+    const newSettings = { ...fontSettings, ligatures: enabled }
+    setFontSettings(newSettings)
+    saveFontSettings(newSettings)
+  }
+
+  const handleIconFontChange = (value: string) => {
+    const newSettings = { ...fontSettings, iconFont: value }
     setFontSettings(newSettings)
     saveFontSettings(newSettings)
   }
@@ -182,6 +162,48 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
     onClose()
   }
 
+  const handleThemeImportClick = () => {
+    themeInputRef.current?.click()
+  }
+
+  const handleThemeFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const content = await file.text()
+      const theme = importTheme(content)
+
+      if (theme) {
+        setThemeImportStatus({ success: true, message: `Imported theme: ${theme.name}` })
+        setThemes(getAllThemes())
+        // Auto-apply imported theme
+        onThemeChange(theme.id)
+      } else {
+        setThemeImportStatus({ success: false, message: 'Invalid theme format' })
+      }
+    } catch {
+      setThemeImportStatus({ success: false, message: 'Failed to read theme file' })
+    }
+
+    if (themeInputRef.current) {
+      themeInputRef.current.value = ''
+    }
+  }
+
+  const handleDeleteTheme = (themeId: string) => {
+    if (confirm('Delete this custom theme?')) {
+      deleteCustomTheme(themeId)
+      setThemes(getAllThemes())
+      // If deleted theme was active, switch to default
+      if (currentTheme === themeId) {
+        onThemeChange('default')
+      }
+    }
+  }
+
+  const builtInIds = new Set(getBuiltInThemes().map(t => t.id))
+
   if (!isOpen) return null
 
   return (
@@ -191,28 +213,57 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
 
         {/* Theme Selection */}
         <div className="settings-section">
-          <label className="settings-label">Theme</label>
+          <div className="settings-label-row">
+            <label className="settings-label">Theme</label>
+            <button className="theme-import-btn" onClick={handleThemeImportClick}>
+              + Import
+            </button>
+            <input
+              ref={themeInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleThemeFileChange}
+              style={{ display: 'none' }}
+            />
+          </div>
           <div className="theme-grid">
-            {(Object.keys(themes) as ThemeKey[]).map((key) => (
+            {themes.map((theme) => (
               <button
-                key={key}
-                className={`theme-option ${currentTheme === key ? 'active' : ''}`}
-                onClick={() => onThemeChange(key)}
+                key={theme.id}
+                className={`theme-option ${currentTheme === theme.id ? 'active' : ''}`}
+                onClick={() => onThemeChange(theme.id)}
                 style={{
-                  backgroundColor: themes[key].colors['--bg-primary'],
-                  borderColor: currentTheme === key ? themes[key].colors['--accent-color'] : themes[key].colors['--border-color'],
+                  backgroundColor: theme.colors.bgPrimary,
+                  borderColor: currentTheme === theme.id ? theme.colors.accentColor : theme.colors.borderColor,
                 }}
               >
                 <span
                   className="theme-accent"
-                  style={{ backgroundColor: themes[key].colors['--accent-color'] }}
+                  style={{ backgroundColor: theme.colors.accentColor }}
                 />
-                <span className="theme-name" style={{ color: themes[key].colors['--text-primary'] }}>
-                  {themes[key].name}
+                <span className="theme-name" style={{ color: theme.colors.textPrimary }}>
+                  {theme.name}
                 </span>
+                {!builtInIds.has(theme.id) && (
+                  <span
+                    className="theme-delete"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteTheme(theme.id) }}
+                    title="Delete theme"
+                  >
+                    ✕
+                  </span>
+                )}
               </button>
             ))}
           </div>
+          {themeImportStatus && (
+            <div className={`import-status ${themeImportStatus.success ? 'success' : 'error'}`}>
+              {themeImportStatus.message}
+            </div>
+          )}
+          <p className="settings-hint">
+            Import custom themes from JSON files. See documentation for format.
+          </p>
         </div>
 
         {/* Font Settings */}
@@ -252,6 +303,31 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
                   +
                 </button>
               </div>
+            </div>
+            <div className="font-setting-row">
+              <label>Icon Font (fallback)</label>
+              <select
+                className="font-select"
+                value={fontSettings.iconFont}
+                onChange={(e) => handleIconFontChange(e.target.value)}
+              >
+                {iconFontOptions.map((font) => (
+                  <option key={font.value} value={font.value}>
+                    {font.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="font-setting-row checkbox-row">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={fontSettings.ligatures}
+                  onChange={(e) => handleLigaturesChange(e.target.checked)}
+                />
+                Use ligatures
+              </label>
+              <span className="setting-hint">Enable font ligatures (e.g., =&gt; becomes ⇒)</span>
             </div>
           </div>
           <div className="settings-hint-block">
@@ -294,6 +370,12 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
           <p className="settings-hint">
             Export saves workspace layout, theme, and terminal content snapshot.
           </p>
+        </div>
+
+        {/* Keyboard Shortcuts */}
+        <div className="settings-section">
+          <label className="settings-label">Keyboard Shortcuts</label>
+          <KeybindSettings />
         </div>
 
         {/* About */}
@@ -356,19 +438,21 @@ export function SettingsDialog({ isOpen, onClose, currentTheme, onThemeChange }:
 
 // Apply theme to document
 export function applyTheme(themeKey: ThemeKey) {
-  const theme = themes[themeKey]
-  const root = document.documentElement
-  Object.entries(theme.colors).forEach(([key, value]) => {
-    root.style.setProperty(key, value)
-  })
-  localStorage.setItem('app-theme', themeKey)
+  const theme = getThemeById(themeKey)
+  if (theme) {
+    applyThemeToDocument(theme)
+    saveThemeId(themeKey)
+  } else {
+    // Fallback to default
+    const defaultTheme = getThemeById('default')
+    if (defaultTheme) {
+      applyThemeToDocument(defaultTheme)
+      saveThemeId('default')
+    }
+  }
 }
 
 // Get saved theme
 export function getSavedTheme(): ThemeKey {
-  const saved = localStorage.getItem('app-theme')
-  if (saved && saved in themes) {
-    return saved as ThemeKey
-  }
-  return 'default'
+  return getSavedThemeId()
 }

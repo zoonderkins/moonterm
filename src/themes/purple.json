@@ -1,0 +1,17 @@
+{
+  "id": "purple",
+  "name": "Purple Night",
+  "variant": "dark",
+  "author": "Moonterm",
+  "colors": {
+    "bgPrimary": "#1a1625",
+    "bgSecondary": "#2d2640",
+    "bgTertiary": "#3d3455",
+    "bgHover": "#4d4465",
+    "textPrimary": "#e0d4f7",
+    "textSecondary": "#9d8dc2",
+    "borderColor": "#5a4d7a",
+    "accentColor": "#9d4edd",
+    "terminalBg": "#1a1625"
+  }
+}

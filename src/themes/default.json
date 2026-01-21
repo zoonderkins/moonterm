@@ -1,0 +1,17 @@
+{
+  "id": "default",
+  "name": "Default (Dark)",
+  "variant": "dark",
+  "author": "Moonterm",
+  "colors": {
+    "bgPrimary": "#1e1e1e",
+    "bgSecondary": "#252526",
+    "bgTertiary": "#2d2d2d",
+    "bgHover": "#3c3c3c",
+    "textPrimary": "#cccccc",
+    "textSecondary": "#888888",
+    "borderColor": "#404040",
+    "accentColor": "#0078d4",
+    "terminalBg": "#1e1e1e"
+  }
+}

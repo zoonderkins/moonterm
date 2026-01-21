@@ -700,8 +700,48 @@ body {
 
 /* Settings Dialog */
 .settings-dialog {
-  min-width: 400px;
+  width: 90vw;
   max-width: 500px;
+  min-width: 320px;
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive adjustments for smaller windows */
+@media (max-height: 700px) {
+  .settings-dialog {
+    max-height: 90vh;
+    padding: 16px;
+  }
+
+  .settings-section {
+    margin-bottom: 12px;
+  }
+
+  .keybind-settings {
+    max-height: 200px;
+  }
+}
+
+@media (max-width: 600px) {
+  .settings-dialog {
+    width: 95vw;
+    padding: 16px;
+  }
+
+  .theme-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .session-actions {
+    flex-direction: column;
+  }
+
+  .session-btn {
+    width: 100%;
+  }
 }
 
 .settings-section {
@@ -748,6 +788,63 @@ body {
   height: 16px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.settings-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.settings-label-row .settings-label {
+  margin-bottom: 0;
+}
+
+.theme-import-btn {
+  padding: 4px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.theme-import-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.theme-option {
+  position: relative;
+}
+
+.theme-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border-radius: 50%;
+  font-size: 10px;
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.theme-option:hover .theme-delete {
+  opacity: 1;
+}
+
+.theme-delete:hover {
+  background: var(--danger-color);
+  color: #fff;
 }
 
 .theme-name {
@@ -830,6 +927,33 @@ body {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
+}
+
+/* Checkbox row in font settings */
+.font-setting-row.checkbox-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.font-setting-row.checkbox-row > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.font-setting-row.checkbox-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.setting-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-left: 24px;
 }
 
 /* Config Path */
@@ -2255,4 +2379,660 @@ body {
 
 .tab.active .tab-activity-dot {
   display: none;
+}
+
+/* ========================================
+   Toast Notifications
+   ======================================== */
+
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: toast-enter 0.3s ease-out;
+  max-width: 360px;
+}
+
+.toast:hover {
+  filter: brightness(1.1);
+}
+
+.toast-exit {
+  animation: toast-exit 0.3s ease-in forwards;
+}
+
+.toast-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.toast-message {
+  flex: 1;
+  line-height: 1.4;
+}
+
+/* Toast variants */
+.toast-info {
+  border-left: 3px solid var(--accent-color);
+}
+
+.toast-info .toast-icon {
+  color: var(--accent-color);
+}
+
+.toast-success {
+  border-left: 3px solid #22c55e;
+}
+
+.toast-success .toast-icon {
+  color: #22c55e;
+}
+
+.toast-warning {
+  border-left: 3px solid #f59e0b;
+}
+
+.toast-warning .toast-icon {
+  color: #f59e0b;
+}
+
+.toast-error {
+  border-left: 3px solid var(--danger-color);
+}
+
+.toast-error .toast-icon {
+  color: var(--danger-color);
+}
+
+@keyframes toast-enter {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toast-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+/* ===== Command History Dialog ===== */
+.command-history-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 600px;
+  max-width: 90vw;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: dialog-enter 0.15s ease-out;
+}
+
+.command-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.command-history-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.command-history-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.command-history-search {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.command-history-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.command-history-input:focus {
+  border-color: var(--accent-color);
+}
+
+.command-history-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.command-history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  min-height: 200px;
+  max-height: 400px;
+}
+
+.command-history-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.command-history-item:hover,
+.command-history-item.selected {
+  background: var(--bg-hover);
+}
+
+.command-history-item.selected {
+  background: var(--accent-color);
+}
+
+.command-history-item.selected .command-history-icon,
+.command-history-item.selected .command-history-command {
+  color: #fff;
+}
+
+.command-history-icon {
+  color: var(--text-secondary);
+  font-family: monospace;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.command-history-command {
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.command-history-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* ===== Bookmarks Dialog ===== */
+.bookmarks-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 600px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: dialog-enter 0.15s ease-out;
+}
+
+.bookmarks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.bookmarks-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.bookmarks-add-btn,
+.bookmarks-cancel-btn {
+  padding: 6px 12px;
+  background: var(--accent-color);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.bookmarks-add-btn:hover,
+.bookmarks-cancel-btn:hover {
+  opacity: 0.9;
+}
+
+.bookmarks-cancel-btn {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.bookmarks-search {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.bookmarks-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.bookmarks-input:focus {
+  border-color: var(--accent-color);
+}
+
+.bookmarks-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.bookmarks-hint {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.bookmarks-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  min-height: 200px;
+  max-height: 400px;
+}
+
+.bookmark-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  position: relative;
+}
+
+.bookmark-item:hover,
+.bookmark-item.selected {
+  background: var(--bg-hover);
+}
+
+.bookmark-item.selected {
+  background: var(--accent-color);
+}
+
+.bookmark-item.selected .bookmark-icon,
+.bookmark-item.selected .bookmark-alias,
+.bookmark-item.selected .bookmark-command,
+.bookmark-item.selected .bookmark-description {
+  color: #fff;
+}
+
+.bookmark-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bookmark-icon {
+  color: #f59e0b;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.bookmark-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.bookmark-alias {
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  color: var(--accent-color);
+  font-size: 12px;
+  font-family: monospace;
+  flex-shrink: 0;
+}
+
+.bookmark-item.selected .bookmark-alias {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.bookmark-command {
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-description {
+  padding-left: 24px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-actions {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.bookmark-item:hover .bookmark-actions,
+.bookmark-item.selected .bookmark-actions {
+  opacity: 1;
+}
+
+.bookmark-action-btn {
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.bookmark-action-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.bookmark-action-btn.danger:hover {
+  background: var(--danger-color);
+  color: #fff;
+}
+
+.bookmarks-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* Bookmarks Form */
+.bookmarks-form {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.form-input {
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+  border-color: var(--accent-color);
+}
+
+.form-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.form-submit-btn {
+  padding: 10px 16px;
+  background: var(--accent-color);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  margin-top: 8px;
+}
+
+.form-submit-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.form-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== Keybind Settings ===== */
+.keybind-settings {
+  max-height: min(300px, 40vh);
+  overflow-y: auto;
+}
+
+.keybind-category {
+  margin-bottom: 16px;
+}
+
+.keybind-category-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.keybind-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.keybind-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  gap: 16px;
+}
+
+.keybind-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.keybind-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.keybind-description {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.keybind-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.keybind-shortcut {
+  padding: 4px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  min-width: 60px;
+  text-align: center;
+}
+
+.keybind-edit-btn,
+.keybind-reset-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.keybind-edit-btn:hover,
+.keybind-reset-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.keybind-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keybind-capture {
+  padding: 8px 16px;
+  background: var(--bg-primary);
+  border: 2px solid var(--accent-color);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 14px;
+  color: var(--text-primary);
+  text-align: center;
+  min-width: 120px;
+  outline: none;
+  cursor: text;
+}
+
+.keybind-capture:focus {
+  box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.3);
+}
+
+.keybind-conflict {
+  font-size: 11px;
+  color: var(--danger-color);
+  padding: 4px 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 4px;
+}
+
+.keybind-editor-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.keybind-btn {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.keybind-btn.save {
+  background: var(--accent-color);
+  color: #fff;
+}
+
+.keybind-btn.save:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.keybind-btn.save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.keybind-btn.cancel {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.keybind-btn.cancel:hover {
+  background: var(--bg-hover);
 }

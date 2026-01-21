@@ -1,0 +1,17 @@
+{
+  "id": "pink",
+  "name": "Pink Blossom",
+  "variant": "dark",
+  "author": "Moonterm",
+  "colors": {
+    "bgPrimary": "#1f1a1c",
+    "bgSecondary": "#2d2528",
+    "bgTertiary": "#3d3235",
+    "bgHover": "#4d4245",
+    "textPrimary": "#f5e0e6",
+    "textSecondary": "#c29da6",
+    "borderColor": "#5a4d52",
+    "accentColor": "#e91e8c",
+    "terminalBg": "#1f1a1c"
+  }
+}
