@@ -20,6 +20,7 @@ export function exportSession(): SessionData {
       title: t.title,
       cwd: t.cwd,
       scrollbackContent: terminalContents.get(t.id) || undefined,
+      splitFromId: t.splitFromId,
     }))
 
     // Find the focused terminal for this workspace
@@ -131,13 +132,38 @@ export async function importSession(file: File): Promise<{ success: boolean; mes
       workspacesImported++
 
       // Create terminals for this workspace with scrollback content
+      // First pass: create main terminals (no splitFromId)
+      const terminalIdMap = new Map<string, string>()  // old id -> new id
       for (const sessionTerminal of sessionWorkspace.terminals) {
-        workspaceStore.importTerminal(workspace.id, {
-          title: sessionTerminal.title,
-          cwd: sessionTerminal.cwd,
-          savedScrollbackContent: sessionTerminal.scrollbackContent
-        })
-        terminalsImported++
+        if (!sessionTerminal.splitFromId) {
+          const newTerminal = workspaceStore.importTerminal(workspace.id, {
+            title: sessionTerminal.title,
+            cwd: sessionTerminal.cwd,
+            savedScrollbackContent: sessionTerminal.scrollbackContent
+          })
+          if (newTerminal) {
+            terminalIdMap.set(sessionTerminal.id, newTerminal.id)
+          }
+          terminalsImported++
+        }
+      }
+      // Second pass: create split terminals
+      for (const sessionTerminal of sessionWorkspace.terminals) {
+        if (sessionTerminal.splitFromId) {
+          const newMainId = terminalIdMap.get(sessionTerminal.splitFromId)
+          if (newMainId) {
+            const newTerminal = workspaceStore.importTerminal(workspace.id, {
+              title: sessionTerminal.title,
+              cwd: sessionTerminal.cwd,
+              savedScrollbackContent: sessionTerminal.scrollbackContent,
+              splitFromId: newMainId
+            })
+            if (newTerminal) {
+              terminalIdMap.set(sessionTerminal.id, newTerminal.id)
+            }
+          }
+          terminalsImported++
+        }
       }
     }
 

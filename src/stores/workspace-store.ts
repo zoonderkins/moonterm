@@ -293,6 +293,7 @@ class WorkspaceStore {
     title: string
     cwd: string
     savedScrollbackContent?: string
+    splitFromId?: string
   }): TerminalInstance {
     const workspace = this.state.workspaces.find(w => w.id === workspaceId)
     if (!workspace) throw new Error('Workspace not found')
@@ -303,13 +304,27 @@ class WorkspaceStore {
       title: data.title,
       cwd: data.cwd,
       scrollbackBuffer: [],
-      savedScrollbackContent: data.savedScrollbackContent
+      savedScrollbackContent: data.savedScrollbackContent,
+      splitFromId: data.splitFromId
+    }
+
+    // If this is a split terminal, update splitLayouts
+    let newSplitLayouts = this.state.splitLayouts
+    if (data.splitFromId) {
+      const existingSplits = this.state.terminals.filter(t => t.splitFromId === data.splitFromId)
+      newSplitLayouts = {
+        ...newSplitLayouts,
+        [data.splitFromId]: this.buildSplitLayout(data.splitFromId, [...existingSplits, terminal])
+      }
     }
 
     this.state = {
       ...this.state,
       terminals: [...this.state.terminals, terminal],
-      focusedTerminalId: terminal.id
+      splitLayouts: newSplitLayouts,
+      splitTerminalId: data.splitFromId ? terminal.id : this.state.splitTerminalId,
+      splitDirection: data.splitFromId ? (this.state.splitDirection || 'horizontal') : this.state.splitDirection,
+      focusedTerminalId: data.splitFromId ? this.state.focusedTerminalId : terminal.id
     }
 
     this.notify()

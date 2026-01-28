@@ -8,6 +8,11 @@ release/
 # Tauri
 src-tauri/target/
 src-tauri/Cargo.lock
+target/
+
+# Personal notes
+*.markdown
+Todo.*
 
 # Logs
 *.log

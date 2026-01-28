@@ -15,6 +15,8 @@ export interface SessionTerminal {
     x: number
     y: number
   }
+  // Split relationship: ID of the main terminal this one is split from
+  splitFromId?: string
 }
 
 export interface SessionWorkspace {
