@@ -1,0 +1,102 @@
+   0.379719584s  INFO prepare_target{force=false package_id=moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri) target="moonterm_lib"}: cargo::core::compiler::fingerprint: fingerprint error for moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri)/Check { test: false }/TargetInner { ..: lib_target("moonterm_lib", ["staticlib", "cdylib", "rlib"], "/Users/edward_oo/temp/moonterm/src-tauri/src/lib.rs", Edition2021) }
+   0.379752709s  INFO prepare_target{force=false package_id=moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri) target="moonterm_lib"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/edward_oo/temp/moonterm/src-tauri/target/debug/.fingerprint/moonterm-c16ad7dae09c8f37/lib-moonterm_lib`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+   0.546641292s  INFO prepare_target{force=false package_id=moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri) target="moonterm_lib"}: cargo::core::compiler::fingerprint: fingerprint error for moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri)/Check { test: true }/TargetInner { ..: lib_target("moonterm_lib", ["staticlib", "cdylib", "rlib"], "/Users/edward_oo/temp/moonterm/src-tauri/src/lib.rs", Edition2021) }
+   0.546656000s  INFO prepare_target{force=false package_id=moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri) target="moonterm_lib"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/edward_oo/temp/moonterm/src-tauri/target/debug/.fingerprint/moonterm-c83c88f9b56d8e34/test-lib-moonterm_lib`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+   0.548018875s  INFO prepare_target{force=false package_id=moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri) target="moonterm"}: cargo::core::compiler::fingerprint: fingerprint error for moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri)/Check { test: false }/TargetInner { name: "moonterm", doc: true, ..: with_path("/Users/edward_oo/temp/moonterm/src-tauri/src/main.rs", Edition2021) }
+   0.548029209s  INFO prepare_target{force=false package_id=moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri) target="moonterm"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/edward_oo/temp/moonterm/src-tauri/target/debug/.fingerprint/moonterm-1f354876adaafdbb/bin-moonterm`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+   0.549459125s  INFO prepare_target{force=false package_id=moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri) target="moonterm"}: cargo::core::compiler::fingerprint: fingerprint error for moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri)/Check { test: true }/TargetInner { name: "moonterm", doc: true, ..: with_path("/Users/edward_oo/temp/moonterm/src-tauri/src/main.rs", Edition2021) }
+   0.549488417s  INFO prepare_target{force=false package_id=moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri) target="moonterm"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/edward_oo/temp/moonterm/src-tauri/target/debug/.fingerprint/moonterm-4f62193f2bebb1cd/test-bin-moonterm`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+    Checking moonterm v1.0.18 (/Users/edward_oo/temp/moonterm/src-tauri)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.88s

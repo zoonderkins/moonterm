@@ -328,24 +328,30 @@ export default function App() {
     workspaceStore.addTerminal(activeWorkspace.id)
   }, [activeWorkspace])
 
-  // Split the current terminal (toggle mode)
+  // Split the current terminal (supports up to 4 panes)
   const handleSplitTerminal = useCallback((direction: 'horizontal' | 'vertical' = 'horizontal') => {
     const focusedId = state.focusedTerminalId
     if (!focusedId || !activeWorkspace) return
 
-    // If already split
-    if (state.splitTerminalId) {
-      // Same direction → toggle off (close split)
-      if (state.splitDirection === direction) {
-        workspaceStore.closeSplit()
-      }
-      // Different direction → do nothing (keep the existing split)
+    // Get current split count
+    const currentSplits = workspaceStore.getSplitTerminals(focusedId)
+    const paneCount = 1 + currentSplits.length
+
+    // If at max panes (4), close all splits on same direction key press
+    if (paneCount >= 4) {
+      workspaceStore.closeAllSplits(focusedId)
       return
     }
 
-    // No split → create new split (PTY will be created by TerminalPanel)
+    // If already has splits and pressing same direction as first split, close last split
+    if (paneCount > 1 && state.splitDirection === direction) {
+      workspaceStore.closeSplit()
+      return
+    }
+
+    // Create new split (PTY will be created by TerminalPanel)
     workspaceStore.splitTerminal(focusedId, direction)
-  }, [state.focusedTerminalId, state.splitTerminalId, state.splitDirection, activeWorkspace])
+  }, [state.focusedTerminalId, state.splitDirection, activeWorkspace])
 
   // Close current terminal tab
   const handleCloseTerminal = useCallback(() => {

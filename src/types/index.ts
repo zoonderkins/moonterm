@@ -40,17 +40,23 @@ export interface TerminalInstance {
 export type SplitDirection = 'horizontal' | 'vertical';
 export type FocusedPane = 'main' | 'split';
 
+// Tree-based split layout for supporting nested splits (4-pane, etc.)
+export type SplitNode = 
+  | { type: 'terminal'; terminalId: string }
+  | { type: 'split'; direction: SplitDirection; first: SplitNode; second: SplitNode; ratio: number };
+
 export interface AppState {
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
   terminals: TerminalInstance[];
   activeTerminalId: string | null;
   focusedTerminalId: string | null;
-  // Currently split terminal ID (if any)
+  // Tree-based split layout per workspace (keyed by terminalId of the "root" terminal)
+  // When a terminal is split, its layout is stored here
+  splitLayouts: Record<string, SplitNode>;
+  // Legacy fields (kept for backward compatibility, will be migrated)
   splitTerminalId: string | null;
-  // Split direction: horizontal (top/bottom) or vertical (left/right)
   splitDirection: SplitDirection | null;
-  // Which pane is focused (main or split)
   focusedPane: FocusedPane;
 }
 

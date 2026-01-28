@@ -29,6 +29,7 @@ class WorkspaceStore {
     terminals: [],
     activeTerminalId: null,
     focusedTerminalId: null,
+    splitLayouts: {},
     splitTerminalId: null,
     splitDirection: null,
     focusedPane: 'main'
@@ -239,6 +240,7 @@ class WorkspaceStore {
       terminals: [],
       activeTerminalId: null,
       focusedTerminalId: null,
+      splitLayouts: {},
       splitTerminalId: null,
       splitDirection: null,
       focusedPane: 'main'
@@ -484,7 +486,7 @@ class WorkspaceStore {
     return this.state.terminals.filter(t => t.workspaceId === workspaceId)
   }
 
-  // Split actions
+  // Split actions - supports up to 4 panes (2x2 grid)
   splitTerminal(terminalId: string, direction: SplitDirection = 'horizontal'): TerminalInstance | null {
     const terminal = this.state.terminals.find(t => t.id === terminalId)
     if (!terminal) return null
@@ -492,40 +494,162 @@ class WorkspaceStore {
     const workspace = this.state.workspaces.find(w => w.id === terminal.workspaceId)
     if (!workspace) return null
 
+    // Get current split terminals for this main terminal
+    const existingSplits = this.state.terminals.filter(t => t.splitFromId === terminalId)
+    
+    // Limit to 3 splits (4 panes total including main)
+    if (existingSplits.length >= 3) {
+      return null
+    }
+
     // Create a new terminal as the split pane
     const splitTerminal: TerminalInstance = {
       id: uuidv4(),
       workspaceId: terminal.workspaceId,
-      title: `${terminal.title} (split)`,
+      title: `${terminal.title} (split ${existingSplits.length + 1})`,
       cwd: terminal.cwd,
       scrollbackBuffer: [],
       splitFromId: terminalId
     }
 
+    // Determine layout mode based on number of panes
+    // 1 split = 2 panes (direction as specified)
+    // 2+ splits = grid mode
+    const newSplitDirection = existingSplits.length === 0 ? direction : this.state.splitDirection
+
     this.state = {
       ...this.state,
       terminals: [...this.state.terminals, splitTerminal],
       splitTerminalId: splitTerminal.id,
-      splitDirection: direction,
-      focusedPane: 'split'  // Auto-focus the new split pane
+      splitDirection: newSplitDirection,
+      splitLayouts: {
+        ...this.state.splitLayouts,
+        [terminalId]: this.buildSplitLayout(terminalId, [...existingSplits, splitTerminal])
+      },
+      focusedPane: 'split'
     }
 
     this.notify()
     return splitTerminal
   }
 
+  // Build split layout tree for a terminal and its splits
+  private buildSplitLayout(mainTerminalId: string, splits: TerminalInstance[]): import('../types').SplitNode {
+    if (splits.length === 0) {
+      return { type: 'terminal', terminalId: mainTerminalId }
+    }
+    if (splits.length === 1) {
+      // 2 panes: simple split
+      return {
+        type: 'split',
+        direction: this.state.splitDirection || 'horizontal',
+        first: { type: 'terminal', terminalId: mainTerminalId },
+        second: { type: 'terminal', terminalId: splits[0].id },
+        ratio: 0.5
+      }
+    }
+    if (splits.length === 2) {
+      // 3 panes: main + 2 splits (L-shape or T-shape)
+      const dir = this.state.splitDirection || 'horizontal'
+      return {
+        type: 'split',
+        direction: dir,
+        first: { type: 'terminal', terminalId: mainTerminalId },
+        second: {
+          type: 'split',
+          direction: dir === 'horizontal' ? 'vertical' : 'horizontal',
+          first: { type: 'terminal', terminalId: splits[0].id },
+          second: { type: 'terminal', terminalId: splits[1].id },
+          ratio: 0.5
+        },
+        ratio: 0.5
+      }
+    }
+    // 4 panes: 2x2 grid
+    return {
+      type: 'split',
+      direction: 'horizontal',
+      first: {
+        type: 'split',
+        direction: 'vertical',
+        first: { type: 'terminal', terminalId: mainTerminalId },
+        second: { type: 'terminal', terminalId: splits[0].id },
+        ratio: 0.5
+      },
+      second: {
+        type: 'split',
+        direction: 'vertical',
+        first: { type: 'terminal', terminalId: splits[1].id },
+        second: { type: 'terminal', terminalId: splits[2].id },
+        ratio: 0.5
+      },
+      ratio: 0.5
+    }
+  }
+
+  // Get all split terminals for a main terminal
+  getSplitTerminals(mainTerminalId: string): TerminalInstance[] {
+    return this.state.terminals.filter(t => t.splitFromId === mainTerminalId)
+  }
+
+  // Get split layout for a terminal
+  getSplitLayout(mainTerminalId: string): import('../types').SplitNode | null {
+    return this.state.splitLayouts[mainTerminalId] || null
+  }
+
   closeSplit(): void {
     const splitId = this.state.splitTerminalId
     if (!splitId) return
 
+    const splitTerminal = this.state.terminals.find(t => t.id === splitId)
+    const mainTerminalId = splitTerminal?.splitFromId
+
     // Kill the split terminal PTY
     tauriAPI.pty.kill(splitId)
+
+    // Check remaining splits
+    const remainingSplits = this.state.terminals.filter(
+      t => t.splitFromId === mainTerminalId && t.id !== splitId
+    )
+
+    // Update split layouts
+    const newSplitLayouts = { ...this.state.splitLayouts }
+    if (mainTerminalId) {
+      if (remainingSplits.length === 0) {
+        delete newSplitLayouts[mainTerminalId]
+      } else {
+        newSplitLayouts[mainTerminalId] = this.buildSplitLayout(mainTerminalId, remainingSplits)
+      }
+    }
 
     this.state = {
       ...this.state,
       terminals: this.state.terminals.filter(t => t.id !== splitId),
+      splitTerminalId: remainingSplits.length > 0 ? remainingSplits[remainingSplits.length - 1].id : null,
+      splitDirection: remainingSplits.length > 0 ? this.state.splitDirection : null,
+      splitLayouts: newSplitLayouts,
+      focusedPane: 'main'
+    }
+
+    this.notify()
+  }
+
+  // Close all splits for a terminal
+  closeAllSplits(mainTerminalId: string): void {
+    const splits = this.getSplitTerminals(mainTerminalId)
+    for (const split of splits) {
+      tauriAPI.pty.kill(split.id)
+    }
+
+    const newSplitLayouts = { ...this.state.splitLayouts }
+    delete newSplitLayouts[mainTerminalId]
+
+    this.state = {
+      ...this.state,
+      terminals: this.state.terminals.filter(t => t.splitFromId !== mainTerminalId),
       splitTerminalId: null,
       splitDirection: null,
+      splitLayouts: newSplitLayouts,
       focusedPane: 'main'
     }
 

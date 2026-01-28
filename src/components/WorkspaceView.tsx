@@ -16,6 +16,8 @@ interface WorkspaceViewProps {
   onUnlockRequest?: (workspaceId: string) => void
 }
 
+
+
 // Memoized component to prevent unnecessary re-renders when other workspaces change
 export const WorkspaceView = memo(function WorkspaceView({
   workspace,
@@ -123,7 +125,10 @@ export const WorkspaceView = memo(function WorkspaceView({
   }, [])
 
   const mainTerminal = focusedTerminal || terminals[0]
-  const isSplit = splitTerminal && splitTerminal.splitFromId === mainTerminal?.id
+  const splitTerminals = mainTerminal ? workspaceStore.getSplitTerminals(mainTerminal.id) : []
+  const paneCount = 1 + splitTerminals.length
+  // isSplit used in className below
+  void (paneCount > 1)
 
   // Handle split resize
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -195,11 +200,11 @@ export const WorkspaceView = memo(function WorkspaceView({
           <p className="hint">or press Cmd+T</p>
         </div>
       ) : (
-        <div className={`terminals-container ${isSplit ? (isVertical ? 'split-vertical' : 'split-horizontal') : ''}`}>
+        <div className={`terminals-container ${paneCount === 2 ? (isVertical ? 'split-vertical' : 'split-horizontal') : ''} ${paneCount >= 3 ? 'split-grid' : ''} panes-${paneCount}`}>
           {/* Main pane - all terminals rendered, only focused visible */}
           <div
             className={`terminal-pane main-pane ${focusedPane === 'main' ? 'pane-focused' : ''}`}
-            style={isSplit
+            style={paneCount === 2
               ? (isVertical ? { width: `${splitRatio * 100}%` } : { height: `${splitRatio * 100}%` })
               : undefined
             }
@@ -221,7 +226,8 @@ export const WorkspaceView = memo(function WorkspaceView({
             ))}
           </div>
 
-          {isSplit && splitTerminal && (
+          {/* Render split panes based on pane count */}
+          {paneCount === 2 && splitTerminals[0] && (
             <>
               <div
                 className={`split-divider ${isVertical ? 'vertical' : 'horizontal'} ${isResizing ? 'resizing' : ''}`}
@@ -238,14 +244,30 @@ export const WorkspaceView = memo(function WorkspaceView({
                 onClick={() => workspaceStore.setFocusedPane('split')}
               >
                 <TerminalPanel
-                  terminalId={splitTerminal.id}
+                  terminalId={splitTerminals[0].id}
                   isActive={focusedPane === 'split'}
-                  cwd={splitTerminal.cwd}
-                  onActivity={() => handleTerminalActivity(splitTerminal.id)}
+                  cwd={splitTerminals[0].cwd}
+                  onActivity={() => handleTerminalActivity(splitTerminals[0].id)}
                 />
               </div>
             </>
           )}
+
+          {/* 3+ panes: grid layout */}
+          {paneCount >= 3 && splitTerminals.map((split, index) => (
+            <div
+              key={split.id}
+              className={`terminal-pane split-pane split-pane-${index + 1} ${focusedPane === 'split' ? 'pane-focused' : ''}`}
+              onClick={() => workspaceStore.setFocusedPane('split')}
+            >
+              <TerminalPanel
+                terminalId={split.id}
+                isActive={focusedPane === 'split'}
+                cwd={split.cwd}
+                onActivity={() => handleTerminalActivity(split.id)}
+              />
+            </div>
+          ))}
         </div>
       ))}
     </div>
