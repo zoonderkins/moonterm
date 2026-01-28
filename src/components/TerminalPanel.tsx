@@ -8,6 +8,7 @@ import { SearchAddon } from '@xterm/addon-search'
 import { LigaturesAddon } from '@xterm/addon-ligatures'
 import '@xterm/xterm/css/xterm.css'
 import { tauriAPI } from '../lib/tauri-bridge'
+import { getCurrentWebview } from '@tauri-apps/api/webview'
 import { registerTerminal, unregisterTerminal } from '../lib/pty-listeners'
 import { registerTerminalInstance, unregisterTerminalInstance } from '../lib/terminal-registry'
 import { workspaceStore } from '../stores/workspace-store'
@@ -42,6 +43,9 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+
+  // Drag and drop visual feedback state
+  const [isDragOver, setIsDragOver] = useState(false)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -127,6 +131,17 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
     if (terminalInstance) {
       commandBufferRef.current = new CommandInputBuffer(terminalInstance.workspaceId)
     }
+
+    // Custom key handler for Cmd+Enter / Alt+Enter newline insertion
+    terminal.attachCustomKeyEventHandler((event) => {
+      // Cmd+Enter or Alt+Enter: insert newline instead of executing
+      if (event.key === 'Enter' && (event.metaKey || event.altKey) && event.type === 'keydown') {
+        // Write newline character to PTY
+        tauriAPI.pty.write(terminalId, '\n')
+        return false  // Prevent xterm.js from handling this key
+      }
+      return true  // Let xterm.js handle all other keys normally
+    })
 
     // Input handler - also captures commands for history
     terminal.onData((data) => {
@@ -257,7 +272,31 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       terminal.refresh(0, terminal.rows - 1)
     })
 
+    // Tauri file drag and drop event listener
+    let unlistenDragDrop: (() => void) | null = null
+    getCurrentWebview().onDragDropEvent((event) => {
+      if (event.payload.type === 'over') {
+        setIsDragOver(true)
+      } else if (event.payload.type === 'leave') {
+        setIsDragOver(false)
+      } else if (event.payload.type === 'drop') {
+        setIsDragOver(false)
+        const paths = event.payload.paths
+        if (paths && paths.length > 0) {
+          // Quote paths containing spaces
+          const quotedPaths = paths.map((p: string) => p.includes(' ') ? `"${p}"` : p)
+          const pathString = quotedPaths.join(' ')
+          tauriAPI.pty.write(terminalId, pathString)
+          terminal.focus()
+        }
+      }
+    }).then((unlisten) => {
+      unlistenDragDrop = unlisten
+    })
+
     return () => {
+      // Cleanup Tauri drag drop listener
+      if (unlistenDragDrop) unlistenDragDrop()
       unregisterTerminal(terminalId)
       unregisterTerminalInstance(terminalId)
       ro.disconnect()
@@ -390,7 +429,7 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       />
       <div
         ref={containerRef}
-        className="terminal-panel"
+        className={`terminal-panel ${isDragOver ? 'drag-over' : ''}`}
         onContextMenu={handleContextMenu}
       />
       {contextMenu && (

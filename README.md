@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.13-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.19-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Tauri](https://img.shields.io/badge/tauri-2.x-FFC131.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -24,6 +24,8 @@
 - **Tab Drag Reorder** - Drag tabs to reorder them
 - **Tab Activity Indicator** - Blue pulsing dot shows new output on inactive tabs
 - **Terminal Search** - Press Cmd+F to search in terminal content
+- **File Drag & Drop** - Drag files into terminal to insert their full paths (auto-quoted if contains spaces)
+- **Multi-line Input** - Press Cmd+Enter or Alt+Enter to insert newline without executing
 - **Right-Click Context Menu** - Copy, paste, select all, clear, and find via context menu
 - **Terminal Split** - Split terminals horizontally (Cmd+D) or vertically (Cmd+Shift+D)
 - **Split Pane Focus** - Click to switch focus between split panes (blue border indicates active)
@@ -96,6 +98,8 @@ npm run tauri:build
 | `Cmd+T` | New terminal tab |
 | `Cmd+W` | Close current terminal tab |
 | `Cmd+F` | Search in terminal |
+| `Cmd+Enter` | Insert newline (multi-line input) |
+| `Alt+Enter` | Insert newline (alternative) |
 | `Cmd+D` | Split terminal horizontally (top/bottom) |
 | `Cmd+Shift+D` | Split terminal vertically (left/right) |
 | `Cmd+↑` / `Cmd+↓` | Switch focus between top/bottom panes |
