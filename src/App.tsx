@@ -402,7 +402,7 @@ export default function App() {
 
       // Cmd+D (Mac) or Ctrl+D (Windows/Linux): Split terminal
       // With Shift: vertical (left/right), without: horizontal (top/bottom)
-      if (modKey && e.key === 'd') {
+      if (modKey && e.key.toLowerCase() === 'd') {
         e.preventDefault()
         e.stopPropagation()
         handleSplitTerminal(e.shiftKey ? 'vertical' : 'horizontal')
