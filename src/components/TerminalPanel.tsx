@@ -60,9 +60,6 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
       allowProposedApi: true,
       // Convert LF to CRLF - important for apps that only send \n
       convertEol: true,
-      // Improve rendering for TUI apps like Claude Code
-      fastScrollModifier: 'alt',
-      fastScrollSensitivity: 5,
       // Reduce visual glitches during rapid updates
       smoothScrollDuration: 0,
     })
@@ -122,7 +119,14 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
 
     // Create PTY for this terminal (will be no-op if already exists on Rust side)
     if (cwd) {
-      tauriAPI.pty.create({ id: terminalId, cwd })
+      console.log(`[TerminalPanel] Creating PTY for ${terminalId}, cwd: ${cwd}`)
+      tauriAPI.pty.create({ id: terminalId, cwd }).then((created) => {
+        console.log(`[TerminalPanel] PTY create result for ${terminalId}: ${created ? 'new' : 'exists'}`)
+      }).catch((err) => {
+        console.error(`[TerminalPanel] PTY create error for ${terminalId}:`, err)
+      })
+    } else {
+      console.warn(`[TerminalPanel] No cwd provided for ${terminalId}, skipping PTY creation`)
     }
 
     // Initialize command history buffer
@@ -151,6 +155,7 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
     })
 
     // Output handler with activity notification
+    console.log(`[TerminalPanel] Registering handlers for ${terminalId}`)
     registerTerminal(
       terminalId,
       (data) => {
@@ -159,6 +164,7 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
         if (onActivityRef.current) onActivityRef.current()
       },
       (code) => {
+        console.log(`[TerminalPanel] PTY exit for ${terminalId}, code: ${code}`)
         terminal.write(`\r\n[exit: ${code}]\r\n`)
         // Auto-close the terminal tab after a short delay
         setTimeout(() => {
@@ -295,6 +301,7 @@ export function TerminalPanel({ terminalId, isActive, cwd, savedScrollbackConten
     })
 
     return () => {
+      console.log(`[TerminalPanel] Cleanup for ${terminalId}`)
       // Cleanup Tauri drag drop listener
       if (unlistenDragDrop) unlistenDragDrop()
       unregisterTerminal(terminalId)

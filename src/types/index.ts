@@ -38,7 +38,8 @@ export interface TerminalInstance {
 }
 
 export type SplitDirection = 'horizontal' | 'vertical';
-export type FocusedPane = 'main' | 'split';
+// FocusedPane: 'main' for main terminal, or the ID of a specific split terminal
+export type FocusedPane = 'main' | string;
 
 // Tree-based split layout for supporting nested splits (4-pane, etc.)
 export type SplitNode = 

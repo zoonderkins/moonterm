@@ -208,7 +208,7 @@ export const WorkspaceView = memo(function WorkspaceView({
               ? (isVertical ? { width: `${splitRatio * 100}%` } : { height: `${splitRatio * 100}%` })
               : undefined
             }
-            onClick={() => workspaceStore.setFocusedPane('main')}
+            onMouseDown={() => workspaceStore.setFocusedPane('main')}
           >
             {terminals.map((terminal) => (
               <div
@@ -236,16 +236,16 @@ export const WorkspaceView = memo(function WorkspaceView({
                 <div className="split-divider-handle" />
               </div>
               <div
-                className={`terminal-pane split-pane ${focusedPane === 'split' ? 'pane-focused' : ''}`}
+                className={`terminal-pane split-pane ${focusedPane === splitTerminals[0].id ? 'pane-focused' : ''}`}
                 style={isVertical
                   ? { width: `${(1 - splitRatio) * 100}%` }
                   : { height: `${(1 - splitRatio) * 100}%` }
                 }
-                onClick={() => workspaceStore.setFocusedPane('split')}
+                onMouseDown={() => workspaceStore.setFocusedPane(splitTerminals[0].id)}
               >
                 <TerminalPanel
                   terminalId={splitTerminals[0].id}
-                  isActive={focusedPane === 'split'}
+                  isActive={focusedPane === splitTerminals[0].id}
                   cwd={splitTerminals[0].cwd}
                   onActivity={() => handleTerminalActivity(splitTerminals[0].id)}
                 />
@@ -257,12 +257,12 @@ export const WorkspaceView = memo(function WorkspaceView({
           {paneCount >= 3 && splitTerminals.map((split, index) => (
             <div
               key={split.id}
-              className={`terminal-pane split-pane split-pane-${index + 1} ${focusedPane === 'split' ? 'pane-focused' : ''}`}
-              onClick={() => workspaceStore.setFocusedPane('split')}
+              className={`terminal-pane split-pane split-pane-${index + 1} ${focusedPane === split.id ? 'pane-focused' : ''}`}
+              onMouseDown={() => workspaceStore.setFocusedPane(split.id)}
             >
               <TerminalPanel
                 terminalId={split.id}
-                isActive={focusedPane === 'split'}
+                isActive={focusedPane === split.id}
                 cwd={split.cwd}
                 onActivity={() => handleTerminalActivity(split.id)}
               />

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
+import { exit } from '@tauri-apps/plugin-process'
 import { workspaceStore } from './stores/workspace-store'
 import { Sidebar } from './components/Sidebar'
 import { WorkspaceView } from './components/WorkspaceView'
@@ -87,18 +88,27 @@ export default function App() {
     applyTheme(savedTheme)
   }, [])
 
-  // Listen for menu events (Help -> Quick Start)
+  // Listen for menu events (Help -> Quick Start, Quit)
   useEffect(() => {
-    let unlisten: (() => void) | null = null
+    let unlistenQuickStart: (() => void) | null = null
+    let unlistenQuit: (() => void) | null = null
 
     listen('menu:quick-start', () => {
       setShowQuickStart(true)
     }).then(fn => {
-      unlisten = fn
+      unlistenQuickStart = fn
+    })
+
+    // Listen for Cmd+Q / Quit menu item
+    listen('menu:request-quit', () => {
+      setShowCloseConfirm(true)
+    }).then(fn => {
+      unlistenQuit = fn
     })
 
     return () => {
-      if (unlisten) unlisten()
+      if (unlistenQuickStart) unlistenQuickStart()
+      if (unlistenQuit) unlistenQuit()
     }
   }, [])
 
@@ -125,8 +135,8 @@ export default function App() {
   const handleCloseConfirm = useCallback(async () => {
     // Save workspace state before closing to ensure all changes are persisted
     await workspaceStore.save()
-    const appWindow = getCurrentWindow()
-    await appWindow.destroy()
+    // Exit the application using the process plugin
+    await exit(0)
   }, [])
 
   const handleCloseCancel = useCallback(() => {
@@ -436,22 +446,44 @@ export default function App() {
       }
 
       // Cmd+Arrow keys: Switch split pane focus
-      if (modKey && state.splitTerminalId) {
-        const dir = state.splitDirection
-        // For vertical split (left/right): use Left/Right arrows
-        // For horizontal split (top/bottom): use Up/Down arrows
-        if (dir === 'vertical' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-          e.preventDefault()
-          e.stopPropagation()
-          workspaceStore.setFocusedPane(e.key === 'ArrowLeft' ? 'main' : 'split')
-          return
+      if (modKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        // IMPORTANT: Read current state directly from store to avoid stale closure
+        const currentState = workspaceStore.getState()
+        const mainTerminalId = currentState.focusedTerminalId
+        if (!mainTerminalId) return
+
+        const splitTerminals = workspaceStore.getSplitTerminals(mainTerminalId)
+        if (splitTerminals.length === 0) return // No splits, nothing to navigate
+
+        e.preventDefault()
+        e.stopPropagation()
+
+        // Build list of all pane IDs: ['main', split1.id, split2.id, ...]
+        const allPaneIds: string[] = ['main', ...splitTerminals.map(t => t.id)]
+        const currentFocusedPane = currentState.focusedPane  // Use fresh state
+        const currentIndex = currentFocusedPane === 'main' ? 0 : allPaneIds.indexOf(currentFocusedPane)
+        const paneCount = allPaneIds.length
+
+        console.log('[Pane Navigation] current:', currentFocusedPane, 'index:', currentIndex, 'paneCount:', paneCount, 'key:', e.key)
+
+        // Simple cycling navigation: Tab through all panes
+        // ArrowRight/ArrowDown = next pane, ArrowLeft/ArrowUp = previous pane
+        let nextIndex = currentIndex
+
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          nextIndex = (currentIndex + 1) % paneCount
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          nextIndex = (currentIndex - 1 + paneCount) % paneCount
         }
-        if (dir === 'horizontal' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-          e.preventDefault()
-          e.stopPropagation()
-          workspaceStore.setFocusedPane(e.key === 'ArrowUp' ? 'main' : 'split')
-          return
+
+        console.log('[Pane Navigation] nextIndex:', nextIndex, 'nextPaneId:', allPaneIds[nextIndex])
+
+        // Apply navigation
+        if (nextIndex !== currentIndex) {
+          const nextPaneId = allPaneIds[nextIndex]
+          workspaceStore.setFocusedPane(nextPaneId)
         }
+        return
       }
 
       // Cmd+1~9: Switch terminal tab (Mac style)

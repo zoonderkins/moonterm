@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.21-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.23-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Tauri](https://img.shields.io/badge/tauri-2.x-FFC131.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -27,8 +27,10 @@
 - **File Drag & Drop** - Drag files into terminal to insert their full paths (auto-quoted if contains spaces)
 - **Multi-line Input** - Press Cmd+Enter or Alt+Enter to insert newline without executing
 - **Right-Click Context Menu** - Copy, paste, select all, clear, and find via context menu
-- **Terminal Split** - Split terminals horizontally (Cmd+D) or vertically (Cmd+Shift+D)
-- **Split Pane Focus** - Click to switch focus between split panes (blue border indicates active)
+- **Terminal Split** - Split terminals horizontally (Cmd+D) or vertically (Cmd+Shift+D), up to 4 panes
+- **Split Pane Focus** - Click or use Cmd+Arrow keys to switch focus between split panes (blue border indicates active)
+- **Split Layout Persistence** - Multi-pane layouts and history saved/restored across app restarts
+- **Quit Confirmation** - Cmd+Q shows confirmation dialog and saves session before exit
 - **Resizable Sidebar** - Drag edge to resize (160-400px), double-click to reset
 - **Collapsible Sidebar** - Minimize to show workspace numbers only
 - **Keyboard Shortcuts** - Quick switching with Ctrl+1-9, Cmd+T, Cmd+D
@@ -81,7 +83,7 @@ npm run tauri:build
 1. **Add Workspace** - Click "+" and select a project folder
 2. **Use Terminal** - A terminal tab opens automatically
 3. **Add More Tabs** - Press `Cmd+T` or click "+" in tab bar
-4. **Split Terminal** - Press `Cmd+D` to split horizontally (press again to close)
+4. **Split Terminal** - Press `Cmd+D` to split horizontally (up to 4 panes, press at max to close all splits)
 5. **Switch Tabs** - Click tabs or use `Ctrl+Shift+1~9`
 6. **Switch Workspaces** - Click sidebar or use `Ctrl+1~9`
 7. **Collapse Sidebar** - Click "◀" to show only workspace numbers
@@ -102,8 +104,7 @@ npm run tauri:build
 | `Alt+Enter` | Insert newline (alternative) |
 | `Cmd+D` | Split terminal horizontally (top/bottom) |
 | `Cmd+Shift+D` | Split terminal vertically (left/right) |
-| `Cmd+↑` / `Cmd+↓` | Switch focus between top/bottom panes |
-| `Cmd+←` / `Cmd+→` | Switch focus between left/right panes |
+| `Cmd+Arrow` | Cycle focus between all split panes (up to 4) |
 | `Cmd+1` ~ `Cmd+9` | Switch to terminal 1-9 |
 | `Ctrl+1` ~ `Ctrl+9` | Switch to workspace 1-9 |
 | Hold `Cmd` | Show shortcut hints |
@@ -316,7 +317,7 @@ moonterm/
 |-------|------------|
 | Desktop Runtime | Tauri 2.x |
 | Frontend | React 19, TypeScript |
-| Terminal | xterm.js 5.5 |
+| Terminal | xterm.js 6.0 |
 | PTY Backend | portable-pty (Rust) |
 | Build | Vite, Cargo |
 

@@ -18,6 +18,7 @@ interface SavedTerminal {
   title: string
   cwd: string
   scrollbackContent?: string
+  splitFromId?: string  // ID of the main terminal this is split from
 }
 
 type Listener = () => void
@@ -526,6 +527,7 @@ class WorkspaceStore {
       scrollbackBuffer: [],
       splitFromId: terminalId
     }
+    console.log(`[WorkspaceStore] Created split terminal ${splitTerminal.id}, cwd: ${splitTerminal.cwd}, splitFromId: ${terminalId}, existingSplits: ${existingSplits.length}`)
 
     // Determine layout mode based on number of panes
     // 1 split = 2 panes (direction as specified)
@@ -541,7 +543,7 @@ class WorkspaceStore {
         ...this.state.splitLayouts,
         [terminalId]: this.buildSplitLayout(terminalId, [...existingSplits, splitTerminal])
       },
-      focusedPane: 'split'
+      focusedPane: splitTerminal.id  // Focus the newly created split terminal
     }
 
     this.notify()
@@ -694,14 +696,22 @@ class WorkspaceStore {
 
   // Focused pane actions
   setFocusedPane(pane: FocusedPane): void {
-    if (this.state.focusedPane === pane) return
+    console.log('[WorkspaceStore] setFocusedPane called:', pane, 'current:', this.state.focusedPane)
+    if (this.state.focusedPane === pane) {
+      console.log('[WorkspaceStore] setFocusedPane skipped - same value')
+      return
+    }
     this.state = { ...this.state, focusedPane: pane }
+    console.log('[WorkspaceStore] setFocusedPane updated to:', this.state.focusedPane)
     this.notify()
   }
 
   toggleFocusedPane(): void {
     if (!this.state.splitTerminalId) return // No split, can't toggle
-    const newPane = this.state.focusedPane === 'main' ? 'split' : 'main'
+    // Toggle between 'main' and the most recent split terminal
+    const newPane = this.state.focusedPane === 'main'
+      ? this.state.splitTerminalId  // Focus the most recent split
+      : 'main'
     this.state = { ...this.state, focusedPane: newPane }
     this.notify()
   }
@@ -716,15 +726,15 @@ class WorkspaceStore {
       // Get scrollback content from terminal registry
       const terminalContents = getAllTerminalContents()
 
-      // Save terminals with their scrollback content (excluding split panes)
+      // Save ALL terminals with their scrollback content (including split panes)
       const savedTerminals: SavedTerminal[] = this.state.terminals
-        .filter(t => !t.splitFromId)  // Don't save split panes
         .map(t => ({
           id: t.id,
           workspaceId: t.workspaceId,
           title: t.title,
           cwd: t.cwd,
-          scrollbackContent: terminalContents.get(t.id)
+          scrollbackContent: terminalContents.get(t.id),
+          splitFromId: t.splitFromId  // Preserve split relationship
         }))
 
       const data = JSON.stringify({
@@ -733,7 +743,12 @@ class WorkspaceStore {
         workspaces: this.state.workspaces,
         activeWorkspaceId: this.state.activeWorkspaceId,
         terminals: savedTerminals,
-        focusedTerminalId: this.state.focusedTerminalId
+        focusedTerminalId: this.state.focusedTerminalId,
+        // Save split state
+        splitTerminalId: this.state.splitTerminalId,
+        splitDirection: this.state.splitDirection,
+        splitLayouts: this.state.splitLayouts,
+        focusedPane: this.state.focusedPane
       })
       await tauriAPI.workspace.save(data)
     } catch (error) {
@@ -750,7 +765,7 @@ class WorkspaceStore {
         try {
           const parsed = JSON.parse(data)
 
-          // Restore terminals from saved data
+          // Restore terminals from saved data (including split panes)
           const savedTerminals: SavedTerminal[] = parsed.terminals || []
           const terminals: TerminalInstance[] = savedTerminals.map(t => ({
             id: t.id,
@@ -758,7 +773,8 @@ class WorkspaceStore {
             title: t.title,
             cwd: t.cwd,
             scrollbackBuffer: [],  // Will be restored when TerminalPanel mounts
-            savedScrollbackContent: t.scrollbackContent  // Store for restoration
+            savedScrollbackContent: t.scrollbackContent,  // Store for restoration
+            splitFromId: t.splitFromId  // Restore split relationship
           }))
 
           this.state = {
@@ -766,7 +782,12 @@ class WorkspaceStore {
             workspaces: parsed.workspaces || [],
             activeWorkspaceId: parsed.activeWorkspaceId || null,
             terminals,
-            focusedTerminalId: parsed.focusedTerminalId || null
+            focusedTerminalId: parsed.focusedTerminalId || null,
+            // Restore split state
+            splitTerminalId: parsed.splitTerminalId || null,
+            splitDirection: parsed.splitDirection || null,
+            splitLayouts: parsed.splitLayouts || {},
+            focusedPane: parsed.focusedPane || 'main'
           }
           this.notify()
         } catch (e) {

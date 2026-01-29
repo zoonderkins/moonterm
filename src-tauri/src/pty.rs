@@ -276,6 +276,16 @@ impl PtyManager {
 
     /// Create a new PTY instance
     pub fn create(&self, options: CreatePtyOptions) -> Result<bool, String> {
+        // Check if PTY with this ID already exists - prevent duplicate creation
+        // This can happen when React components unmount/remount during render transitions
+        {
+            let instances = self.instances.lock();
+            if instances.contains_key(&options.id) {
+                println!("PTY instance {} already exists, skipping creation", options.id);
+                return Ok(false);
+            }
+        }
+
         let (shell, args) = Self::get_default_shell();
         let mut env_vars = Self::create_utf8_env();
 
@@ -289,7 +299,7 @@ impl PtyManager {
 
         // Use portable-pty only - no fallback to avoid duplicate output issues
         self.create_with_portable_pty(&options, &shell, &args, &env_vars)?;
-        println!("Created terminal using portable-pty");
+        println!("Created terminal using portable-pty: {}", options.id);
         Ok(true)
     }
 

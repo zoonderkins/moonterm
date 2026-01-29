@@ -14,6 +14,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let app_handle = app.handle().clone();
             let pty_manager = Arc::new(PtyManager::new(app_handle.clone()));
@@ -27,7 +28,8 @@ pub fn run() {
                 ..Default::default()
             }))?;
             let separator = PredefinedMenuItem::separator(app)?;
-            let quit = PredefinedMenuItem::quit(app, Some("Quit Moonterm"))?;
+            // Custom quit menu item to intercept and show confirm dialog
+            let quit = MenuItem::with_id(app, "quit", "Quit Moonterm", true, Some("CmdOrCtrl+Q"))?;
             let app_menu = Submenu::with_items(app, "Moonterm", true, &[&about, &separator, &quit])?;
 
             // Create Edit menu with standard items
@@ -70,6 +72,9 @@ pub fn run() {
             if event.id() == "quick_start" {
                 // Emit event to frontend to show Quick Start dialog
                 let _ = app.emit("menu:quick-start", ());
+            } else if event.id() == "quit" {
+                // Emit event to frontend to show confirm dialog before quitting
+                let _ = app.emit("menu:request-quit", ());
             }
         })
         .invoke_handler(tauri::generate_handler![
